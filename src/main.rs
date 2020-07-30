@@ -225,27 +225,29 @@ impl event::EventHandler for GameState {
                 self.highest_jump = self.walker.position.y;
             }
 
-            if self.left_held {
-                self.walker.apply_force(Vector2::new(-ACCELERATION, 0.0));
-            }
-
-            if self.right_held {
-                self.walker.apply_force(Vector2::new(ACCELERATION, 0.0));
-            }
-
-            if self.walker.is_grounded() && self.jump_pressed {
-                self.highest_jump = self.walker.position.y;
-                let mag = self.walker.velocity.magnitude();
-                if mag <= f32::EPSILON {
-                    self.walker
-                        .apply_force(Vector2::new(0.0, -JUMP_ACCELERATION));
-                } else {
-                    self.walker
-                        .apply_force(Vector2::new(0.0, -JUMP_ACCELERATION * (1.0 + (mag / 30.0))));
-                }
-            }
-
             if self.walker.is_grounded() {
+                if self.left_held {
+                    self.walker.apply_force(Vector2::new(-ACCELERATION, 0.0));
+                }
+
+                if self.right_held {
+                    self.walker.apply_force(Vector2::new(ACCELERATION, 0.0));
+                }
+
+                if self.jump_pressed {
+                    self.highest_jump = self.walker.position.y;
+                    let mag = self.walker.velocity.magnitude();
+                    if mag <= f32::EPSILON {
+                        self.walker
+                            .apply_force(Vector2::new(0.0, -JUMP_ACCELERATION));
+                    } else {
+                        self.walker.apply_force(Vector2::new(
+                            0.0,
+                            -JUMP_ACCELERATION * (1.0 + (mag / 30.0)),
+                        ));
+                    }
+                }
+
                 let mut friction = self.walker.velocity.clone();
                 friction *= -1.0;
                 friction = friction.normalize_safe();
@@ -370,7 +372,7 @@ impl event::EventHandler for GameState {
             Point2::new(WORLD_WIDTH, BOTTOM),
         )?;
 
-        let size = HALF_SIZE;
+        let size = SIZE * 2.0;
         let mut mb = MeshBuilder::new();
         for i in 0..(WORLD_WIDTH / size) as i32 {
             let half_thickness = BOTTOM + 10.0;
