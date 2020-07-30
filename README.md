@@ -37,12 +37,12 @@ vector2 get_relative_coordinates(vector2 &camera_center, vector2 &object)
 // z = zoom
 ```
 ```matlab
-(s/2)+((x-(c-(s/2)))*z)-((s/2)*z)
+new_x = (s/2)+((x-(c-(s/2)))*z)-((s/2)*z)
 ```
 
 - ### simplified with https://www.dcode.fr/math-simplification
 ```matlab
-z(x−c)+s/2
+new_x = z(x−c)+s/2
 ```
 
 ## Key realization
