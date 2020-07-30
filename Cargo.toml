@@ -11,7 +11,9 @@ edition = "2018"
 opt-level = 2
 
 [dependencies]
-ggez = "0.5.1"
+ggez = "0.5"
+legion = "0.2"
+
 #rand = "0.7.3"
 #rhai = "0.17.0"
 #rand_distr = "0.2.2"
