@@ -291,27 +291,6 @@ impl event::EventHandler for GameState {
                 self.world.camera_center.y = self.walker.position.y;
             }
 
-            // // screen wrap
-            // self.walker.position.x = self.walker.position.x.rem_euclid(WIDTH);
-            // self.walker.position.y = self.walker.position.y.rem_euclid(HEIGHT);
-
-            // bounce
-            // if self.walker.position.x > MAX_X {
-            //     self.walker.position.x = MAX_X;
-            //     self.walker.velocity.x = self.walker.velocity.x * -1.0;
-            // } else if self.walker.position.x < MIN_X {
-            //     self.walker.position.x = MIN_X;
-            //     self.walker.velocity.x = self.walker.velocity.x * -1.0;
-            // }
-            //
-            // if self.walker.position.y > MAX_Y {
-            //     self.walker.position.y = MAX_Y;
-            //     self.walker.velocity.y = self.walker.velocity.y * -1.0;
-            // } else if self.walker.position.y < MIN_Y {
-            //     self.walker.position.y = MIN_Y;
-            //     self.walker.velocity.y = self.walker.velocity.y * -1.0;
-            // }
-
             // stop
             if self.walker.position.x >= MAX_X {
                 self.walker.position.x = MAX_X;
