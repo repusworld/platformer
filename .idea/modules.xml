@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/antz.iml" filepath="$PROJECT_DIR$/.idea/antz.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/platformer.iml" filepath="$PROJECT_DIR$/.idea/platformer.iml" />
     </modules>
   </component>
 </project>
