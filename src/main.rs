@@ -1,20 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
-use std::ops::{Add, Deref, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 use std::path;
 
-use conf::{FullscreenType, WindowMode, WindowSetup};
+use conf::{WindowMode, WindowSetup};
 use event::{quit, KeyCode, KeyMods};
-use ggez::graphics::{Mesh, MeshBuilder};
+use ggez::graphics::MeshBuilder;
 use ggez::Context;
 use ggez::*;
 use graphics::Color;
-use input::mouse;
 use nalgebra as na;
-use perlin_noise::PerlinNoise;
-use rand::prelude::*;
-use rhai::{Engine, EvalAltResult, RegisterFn, Scope, INT};
 
 type Point2 = na::Point2<f32>;
 type Vector2 = na::Vector2<f32>;
@@ -53,6 +49,12 @@ impl SafeNormalization for Vector2 {
         self.try_normalize(f32::EPSILON)
             .unwrap_or_else(|| Vector2::new(0.0, 0.0))
     }
+}
+
+#[derive(Debug, PartialEq)]
+enum CameraMode {
+    Locked,
+    Free,
 }
 
 #[derive(Debug)]
@@ -144,18 +146,6 @@ struct GameState {
     jump_held: bool,
 }
 
-#[derive(Debug, PartialEq)]
-enum CameraMode {
-    Locked,
-    Free,
-}
-
-fn relative_point(camera: Vector2, zoom: f32, point: Point2) -> Point2 {
-    let moved = point - camera;
-    let scaled = moved * zoom;
-    Point2::new(scaled.x + MIDDLE_X, scaled.y + MIDDLE_Y)
-}
-
 impl GameState {
     fn new(_ctx: &mut Context) -> ggez::GameResult<GameState> {
         let start_x = WIDTH / 2.0;
@@ -173,12 +163,6 @@ impl GameState {
             ..Default::default()
         })
     }
-
-    /// Camera with zoom
-    ///
-    /// relative_x = (x - camera_center.x) * zoom + (SCREE_WIDTH / 2)
-    ///
-    /// relative_y = (y - camera_center.y) * zoom + (SCREE_HEIGHT / 2)
     fn relative_point(&mut self, point: Point2) -> Point2 {
         relative_point(self.world.camera_center, self.world.zoom, point)
     }
@@ -200,6 +184,8 @@ impl GameState {
     }
 }
 
+#[inline(always)]
+#[allow(unused)]
 fn map_range<T: Mul<Output = T> + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Copy>(
     val: T,
     start1: T,
@@ -217,6 +203,18 @@ fn limit(v: f32, max: f32) -> f32 {
     } else {
         v
     }
+}
+
+/// Camera with zoom
+///
+/// relative_x = (x - camera_center.x) * zoom + (SCREE_WIDTH / 2)
+///
+/// relative_y = (y - camera_center.y) * zoom + (SCREE_HEIGHT / 2)
+#[inline(always)]
+fn relative_point(camera: Vector2, zoom: f32, point: Point2) -> Point2 {
+    let moved = point - camera;
+    let scaled = moved * zoom;
+    Point2::new(scaled.x + MIDDLE_X, scaled.y + MIDDLE_Y)
 }
 
 impl event::EventHandler for GameState {
@@ -353,17 +351,6 @@ impl event::EventHandler for GameState {
         Ok(())
     }
 
-    fn mouse_wheel_event(&mut self, _ctx: &mut Context, _x: f32, y: f32) {
-        if y > 0.0 {
-            self.world.zoom = self.world.zoom - 0.1;
-        } else if y < 0.0 {
-            self.world.zoom = self.world.zoom + 0.1;
-        }
-        if self.world.zoom < 0.1 {
-            self.world.zoom = 0.1;
-        }
-    }
-
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [1.0, 1.0, 1.0, 1.0].into());
         if self.draw_highest_jump {
@@ -439,6 +426,17 @@ impl event::EventHandler for GameState {
         Ok(())
     }
 
+    fn mouse_wheel_event(&mut self, _ctx: &mut Context, _x: f32, y: f32) {
+        if y > 0.0 {
+            self.world.zoom = self.world.zoom - 0.1;
+        } else if y < 0.0 {
+            self.world.zoom = self.world.zoom + 0.1;
+        }
+        if self.world.zoom < 0.1 {
+            self.world.zoom = 0.1;
+        }
+    }
+
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
@@ -508,7 +506,7 @@ fn main() -> GameResult {
         path::PathBuf::from("./resources")
     };
 
-    let cb = ggez::ContextBuilder::new("bunnymark", "ggez")
+    let cb = ggez::ContextBuilder::new("platformer", "ggez")
         .add_resource_path(resource_dir)
         .window_mode(WindowMode {
             width: WIDTH,
