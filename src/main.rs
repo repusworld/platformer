@@ -428,16 +428,16 @@ impl event::EventHandler for GameState {
         Ok(())
     }
 
-    fn mouse_wheel_event(&mut self, _ctx: &mut Context, _x: f32, y: f32) {
-        if y > 0.0 {
-            self.world.zoom = self.world.zoom - 0.1;
-        } else if y < 0.0 {
-            self.world.zoom = self.world.zoom + 0.1;
-        }
-        if self.world.zoom < 0.1 {
-            self.world.zoom = 0.1;
-        }
-    }
+    // fn mouse_wheel_event(&mut self, _ctx: &mut Context, _x: f32, y: f32) {
+    //     if y > 0.0 {
+    //         self.world.zoom = self.world.zoom - 0.1;
+    //     } else if y < 0.0 {
+    //         self.world.zoom = self.world.zoom + 0.1;
+    //     }
+    //     if self.world.zoom < 0.1 {
+    //         self.world.zoom = 0.1;
+    //     }
+    // }
 
     fn key_down_event(
         &mut self,

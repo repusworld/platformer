@@ -11,13 +11,8 @@ edition = "2018"
 opt-level = 2
 
 [dependencies]
-gfx = "0.18"
-gfx_device_gl = "0.16"
-nalgebra = {version = "0.18", features = ["mint"] }
 ggez = "0.5.1"
-rand = "0.7.3"
-image = {version = "0.22", default-features = false, features = ["gif_codec", "jpeg", "ico", "png_codec", "pnm", "tga", "tiff", "webp", "bmp", "dxt", ] }
-
-rhai = "0.17.0"
-rand_distr = "0.2.2"
-perlin_noise = "1.0.1"
+#rand = "0.7.3"
+#rhai = "0.17.0"
+#rand_distr = "0.2.2"
+#perlin_noise = "1.0.1"
