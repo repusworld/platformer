@@ -1,17 +1,8 @@
 [package]
-name = "antz"
+name = "platformer"
 version = "0.1.0"
 authors = ["hardliner66 <hardliner66@gmail.com>"]
 edition = "2018"
-default-run = "antz"
-
-[[bin]]
-name = "physics"
-path = "src/main.rs"
-
-[[bin]]
-name = "antz"
-path = "src/main.rs"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

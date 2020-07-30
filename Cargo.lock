@@ -63,21 +63,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 
 [[package]]
-name = "antz"
-version = "0.1.0"
-dependencies = [
- "gfx",
- "gfx_device_gl",
- "ggez",
- "image",
- "nalgebra",
- "perlin_noise",
- "rand 0.7.3",
- "rand_distr",
- "rhai",
-]
-
-[[package]]
 name = "approx"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1436,6 +1421,21 @@ name = "pkg-config"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d36492546b6af1463394d46f0c834346f31548646f6ba10849802c9c9a27ac33"
+
+[[package]]
+name = "platformer"
+version = "0.1.0"
+dependencies = [
+ "gfx",
+ "gfx_device_gl",
+ "ggez",
+ "image",
+ "nalgebra",
+ "perlin_noise",
+ "rand 0.7.3",
+ "rand_distr",
+ "rhai",
+]
 
 [[package]]
 name = "png"
