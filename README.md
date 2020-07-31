@@ -49,3 +49,10 @@ new_x = z(x−c)+s/2
 
 only apply the zoom to the calculated offset from the object to the camera.
 after that, move by half the screen to get it centered.
+
+# Friction
+
+## Key realization
+
+In order to have friction which always stops a moving object, either the friction needs to be less than 1 or
+the acceleration (and all movement speeds) needs to be a multiple of the friction.

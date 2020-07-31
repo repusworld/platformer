@@ -12,6 +12,7 @@ max_vertical_velocity = 10.0
 friction = 0.5
 normal_force = 1.0
 gravity = 0.2
+movement_deadzone = 0.0001
 
 [camera]
 deadzone = 16.0

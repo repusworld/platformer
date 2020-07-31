@@ -97,6 +97,7 @@ struct PhysicsConfig {
     friction: f32,
     normal_force: f32,
     gravity: f32,
+    movement_deadzone: f32,
 }
 
 impl Default for PhysicsConfig {
@@ -107,6 +108,7 @@ impl Default for PhysicsConfig {
             friction: 0.5,
             normal_force: 1.0,
             gravity: 0.2,
+            movement_deadzone: 0.0001,
         }
     }
 }
@@ -249,12 +251,12 @@ impl GameState {
         world.insert(
             (),
             vec![(
-                Position::new(start_x + 50.0, start_y - 500.0),
+                Position::new(start_x + 50.0, start_y - 100.0),
                 Acceleration::new(0.0, 0.0),
                 Velocity::new(0.0, 0.0),
                 Size(config.player.size / 2.0),
                 Mass(config.player.mass),
-                Gravity(Vector2::new(0.0, 0.001)),
+                Gravity(Vector2::new(0.0, 0.01)),
                 graphics::Mesh::new_circle(
                     ctx,
                     graphics::DrawMode::fill(),
@@ -417,11 +419,11 @@ impl ggez::event::EventHandler for GameState {
                 velocity.0.x = limit(velocity.0.x, self.config.physics.max_velocity);
                 velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
 
-                if velocity.0.x.abs() < 0.06 {
+                if velocity.0.x.abs() < self.config.physics.movement_deadzone {
                     velocity.0.x = 0.0;
                 }
 
-                if velocity.0.y.abs() < 0.06 {
+                if velocity.0.y.abs() < self.config.physics.movement_deadzone {
                     velocity.0.y = 0.0;
                 }
 
