@@ -92,7 +92,7 @@ impl Default for CameraConfig {
 
 #[derive(Deserialize, Debug)]
 struct PhysicsConfig {
-    max_velocity: f32,
+    max_horizontal_velocity: f32,
     max_vertical_velocity: f32,
     friction: f32,
     normal_force: f32,
@@ -103,7 +103,7 @@ struct PhysicsConfig {
 impl Default for PhysicsConfig {
     fn default() -> Self {
         PhysicsConfig {
-            max_velocity: 10.0,
+            max_horizontal_velocity: 10.0,
             max_vertical_velocity: 10.0,
             friction: 0.5,
             normal_force: 1.0,
@@ -350,7 +350,7 @@ impl ggez::event::EventHandler for GameState {
             for (mut acceleration, mut gravity, velocity, pos, mass) in
                 query.iter_mut(&mut self.world)
             {
-                if pos.is_grounded() {
+                if pos.is_grounded() || self.config.player.allow_air_control {
                     if self.controls.left_held {
                         acceleration.apply_force(
                             &Vector2::new(-self.config.player.acceleration, 0.0),
@@ -364,7 +364,9 @@ impl ggez::event::EventHandler for GameState {
                             mass.0,
                         );
                     }
+                }
 
+                if pos.is_grounded() {
                     if self.controls.jump_pressed {
                         let mag = velocity.0.magnitude();
                         if mag <= f32::EPSILON {
@@ -416,7 +418,7 @@ impl ggez::event::EventHandler for GameState {
 
                 acceleration.0 *= 0.0;
                 // limit velocity
-                velocity.0.x = limit(velocity.0.x, self.config.physics.max_velocity);
+                velocity.0.x = limit(velocity.0.x, self.config.physics.max_horizontal_velocity);
                 velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
 
                 if velocity.0.x.abs() < self.config.physics.movement_deadzone {
