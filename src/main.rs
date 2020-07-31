@@ -226,8 +226,9 @@ impl GameState {
         let universe = Universe::new();
         let mut world = universe.create_world();
 
-        let config_string = std::fs::read_to_string("config.toml")?;
-        let config: Config = toml::from_str(&config_string).unwrap_or_default();
+        let config: Config = std::fs::read_to_string("config.toml")
+            .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
+            .unwrap_or_default();
 
         let components = vec![(
             Player,
