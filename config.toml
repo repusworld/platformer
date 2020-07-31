@@ -1,0 +1,17 @@
+[player]
+mass = 10.0
+size = 50.0
+acceleration = 1.0
+jump_acceleration = 70.0
+float_modifier = 0.5
+allow_air_control = false
+
+[physics]
+max_velocity = 10.0
+max_vertical_velocity = 10.0
+friction = 0.5
+normal_force = 1.0
+gravity = 0.2
+
+[camera]
+deadzone = 16.0

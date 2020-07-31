@@ -1,15 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[macro_use]
+extern crate serde_derive;
+
 use std::env;
 use std::ops::{Add, Div, Mul, Sub};
 use std::path;
 
-use conf::{WindowMode, WindowSetup};
-use event::{quit, KeyCode, KeyMods};
-use ggez::graphics::MeshBuilder;
+use ggez::conf::{WindowMode, WindowSetup};
+use ggez::event::{quit, KeyCode, KeyMods};
+use ggez::graphics::{Mesh, MeshBuilder};
 use ggez::Context;
 use ggez::*;
 use graphics::Color;
+use legion::prelude::*;
 use nalgebra as na;
 
 type Point2 = na::Point2<f32>;
@@ -17,28 +21,14 @@ type Vector2 = na::Vector2<f32>;
 
 const WORLD_WIDTH: f32 = 10_000.0;
 const WORLD_HEIGHT: f32 = 10_000.0;
-
-const SIZE: f32 = 50.0;
-const HALF_SIZE: f32 = SIZE / 2.0;
 const WIDTH: f32 = 1280.0;
 const MIDDLE_X: f32 = WIDTH / 2.0;
-const MIN_X: f32 = 0.0 + HALF_SIZE;
-const MAX_X: f32 = WORLD_WIDTH - HALF_SIZE;
 const HEIGHT: f32 = 720.0;
 const MIDDLE_Y: f32 = HEIGHT / 2.0;
-const MIN_Y: f32 = 0.0 + HALF_SIZE;
-const MAX_Y: f32 = WORLD_HEIGHT - HALF_SIZE;
-const FLOOR: f32 = MAX_Y - 30.0 - HALF_SIZE;
+const FLOOR: f32 = WORLD_HEIGHT - 100.0 - 30.0;
 const FLOOR_THICKNESS: f32 = 5.0;
-const ACCELERATION: f32 = 1.0;
-const JUMP_ACCELERATION: f32 = 70.0;
 const DESIRED_FPS: u32 = 60;
-const MAX_VELOCITY: f32 = 10.0;
-const MAX_JUMP_VELOCITY: f32 = 10.0;
-const FRICTION: f32 = 0.5;
-const NORMAL_FORCE: f32 = 1.0;
-const CAMERA_DEADZONE: f32 = 16.0;
-const BOTTOM: f32 = FLOOR + (FLOOR_THICKNESS / 2.0) + HALF_SIZE;
+const BOTTOM: f32 = FLOOR + (FLOOR_THICKNESS / 2.0);
 
 trait SafeNormalization {
     fn normalize_safe(&self) -> Self;
@@ -51,89 +41,161 @@ impl SafeNormalization for Vector2 {
     }
 }
 
+trait PhysicsHelper {
+    fn apply_force(&mut self, force: &Vector2, mass: f32) -> &mut Self;
+
+    fn apply_gravity(&mut self, force: &Vector2) -> &mut Self;
+}
+
+fn apply_force(v: &mut Vector2, force: &Vector2, mass: f32) {
+    let force = force / mass;
+    *v += force;
+}
+
+fn apply_gravity(v: &mut Vector2, force: &Vector2) {
+    *v += force;
+}
+
+#[derive(Deserialize, Debug)]
+struct PlayerConfig {
+    acceleration: f32,
+    jump_acceleration: f32,
+    mass: f32,
+    size: f32,
+    float_modifier: f32,
+    allow_air_control: bool,
+}
+
+impl Default for PlayerConfig {
+    fn default() -> Self {
+        PlayerConfig {
+            acceleration: 1.0,
+            jump_acceleration: 70.0,
+            mass: 10.0,
+            size: 50.0,
+            float_modifier: 0.5,
+            allow_air_control: false,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct CameraConfig {
+    deadzone: f32,
+}
+
+impl Default for CameraConfig {
+    fn default() -> Self {
+        CameraConfig { deadzone: 16.0 }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct PhysicsConfig {
+    max_velocity: f32,
+    max_vertical_velocity: f32,
+    friction: f32,
+    normal_force: f32,
+    gravity: f32,
+}
+
+impl Default for PhysicsConfig {
+    fn default() -> Self {
+        PhysicsConfig {
+            max_velocity: 10.0,
+            max_vertical_velocity: 10.0,
+            friction: 0.5,
+            normal_force: 1.0,
+            gravity: 0.2,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Default)]
+struct Config {
+    player: PlayerConfig,
+    camera: CameraConfig,
+    physics: PhysicsConfig,
+}
+
 #[derive(Debug, PartialEq)]
 enum CameraMode {
     Locked,
     Free,
 }
 
-#[derive(Debug)]
-struct Walker {
-    position: Point2,
-    velocity: Vector2,
-    acceleration: Vector2,
-    color: Color,
-    mass: f32,
-}
+struct Position(Point2);
 
-impl Default for Walker {
-    fn default() -> Self {
-        Walker {
-            position: Point2::new(0.0, 0.0),
-            velocity: Vector2::new(0.0, 0.0),
-            acceleration: Vector2::new(0.0, 0.0),
-            color: graphics::BLACK,
-            mass: Default::default(),
-        }
-    }
-}
-
-impl Walker {
-    fn new(position: Point2, color: Color) -> Walker {
-        Walker {
-            position,
-            color,
-            acceleration: Vector2::new(0.0, 0.0),
-            velocity: Vector2::new(0.0, 0.0),
-            mass: 10.0,
-        }
+impl Position {
+    fn new(x: f32, y: f32) -> Self {
+        Position(Point2::new(x, y))
     }
 
     fn is_grounded(&self) -> bool {
-        (FLOOR - self.position.y).abs() <= f32::EPSILON
+        (FLOOR - self.0.y).abs() <= f32::EPSILON
     }
+}
 
-    fn apply_force(&mut self, force: Vector2) -> &mut Self {
-        let force = force / self.mass;
-        self.acceleration += force;
+struct Acceleration(Vector2);
+
+impl Acceleration {
+    fn new(x: f32, y: f32) -> Self {
+        Acceleration(Vector2::new(x, y))
+    }
+}
+
+struct Size(f32);
+
+struct Velocity(Vector2);
+
+impl Velocity {
+    fn new(x: f32, y: f32) -> Self {
+        Velocity(Vector2::new(x, y))
+    }
+}
+
+impl Default for Velocity {
+    fn default() -> Self {
+        Velocity(Vector2::new(0.0, 0.0))
+    }
+}
+
+impl PhysicsHelper for Acceleration {
+    fn apply_force(&mut self, force: &Vector2, mass: f32) -> &mut Self {
+        apply_force(&mut self.0, force, mass);
         self
     }
 
     fn apply_gravity(&mut self, force: &Vector2) -> &mut Self {
-        self.acceleration += force;
+        apply_gravity(&mut self.0, force);
         self
     }
 }
 
-#[derive(Debug)]
-struct World {
-    gravity: Vector2,
-    float_gravity: Vector2,
-    camera_center: Vector2,
-    camera_mode: CameraMode,
+struct Mass(f32);
 
-    zoom: f32,
+struct Gravity(Vector2);
+
+#[derive(Debug)]
+struct Camera {
+    center: Vector2,
+    mode: CameraMode,
 }
 
-impl Default for World {
+impl Default for Camera {
     fn default() -> Self {
-        World {
-            gravity: Vector2::new(0.0, 0.0),
-            float_gravity: Vector2::new(0.0, 0.0),
-            camera_center: Vector2::new(0.0, 0.0),
-            camera_mode: CameraMode::Locked,
-            zoom: 1.0,
+        Camera {
+            center: Vector2::new(0.0, 0.0),
+            mode: CameraMode::Free,
         }
     }
 }
 
-#[derive(Debug, Default)]
-struct GameState {
-    tick: usize,
-    highest_jump: f32,
-    draw_highest_jump: bool,
-    walker: Walker,
-    world: World,
+#[derive(Default)]
+struct Player;
+
+#[derive(Default)]
+struct Controls {
     left_pressed: bool,
     left_held: bool,
     right_pressed: bool,
@@ -146,41 +208,93 @@ struct GameState {
     jump_held: bool,
 }
 
+struct GameState {
+    tick: usize,
+    config: Config,
+    camera: Camera,
+    world: World,
+    controls: Controls,
+}
+
 impl GameState {
-    fn new(_ctx: &mut Context) -> ggez::GameResult<GameState> {
+    fn new(ctx: &mut Context) -> ggez::GameResult<GameState> {
         let start_x = WIDTH / 2.0;
-        let start_y = MAX_Y;
+        let start_y = WORLD_HEIGHT - 300.0;
 
-        Ok(GameState {
-            walker: Walker::new(Point2::new(start_x, start_y), Color::from_rgb(0, 0, 255)),
-            world: World {
-                gravity: Vector2::new(0.0, 0.2),
-                float_gravity: Vector2::new(0.0, 0.1),
-                camera_center: Vector2::new(start_x, start_y),
-                camera_mode: CameraMode::Locked,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-    }
-    fn relative_point(&mut self, point: Point2) -> Point2 {
-        relative_point(self.world.camera_center, self.world.zoom, point)
-    }
+        let universe = Universe::new();
+        let mut world = universe.create_world();
 
-    fn draw_line(
-        &mut self,
-        ctx: &mut Context,
-        thickness: f32,
-        start: Point2,
-        end: Point2,
-    ) -> GameResult {
-        let line = graphics::Mesh::new_line(
-            ctx,
-            &[self.relative_point(start), self.relative_point(end)],
-            thickness * self.world.zoom,
+        let config_string = std::fs::read_to_string("config.toml")?;
+        let config: Config = toml::from_str(&config_string).unwrap_or_default();
+
+        let components = vec![(
+            Player,
+            Position::new(start_x, start_y),
+            Acceleration::new(0.0, 0.0),
+            Velocity::new(0.0, 0.0),
+            Size(config.player.size),
+            Mass(config.player.mass),
+            Gravity(Vector2::new(0.0, config.physics.gravity)),
+            graphics::Mesh::new_circle(
+                ctx,
+                graphics::DrawMode::fill(),
+                Point2::new(0.0, -(config.player.size / 2.0)),
+                config.player.size / 2.0,
+                0.1,
+                Color::from_rgb(0, 0, 255),
+            )?,
+        )];
+        world.insert((), components);
+
+        world.insert(
+            (),
+            vec![(
+                Position::new(start_x + 50.0, start_y - 500.0),
+                Acceleration::new(0.0, 0.0),
+                Velocity::new(0.0, 0.0),
+                Size(config.player.size / 2.0),
+                Mass(config.player.mass),
+                Gravity(Vector2::new(0.0, 0.001)),
+                graphics::Mesh::new_circle(
+                    ctx,
+                    graphics::DrawMode::fill(),
+                    Point2::new(0.0, -(config.player.size / 4.0)),
+                    config.player.size / 4.0,
+                    0.1,
+                    Color::from_rgb(255, 0, 0),
+                )?,
+            )],
+        );
+
+        let size = config.player.size * 2.0;
+        let mut mb = MeshBuilder::new();
+        mb.line(
+            &[Point2::new(0.0, BOTTOM), Point2::new(WORLD_WIDTH, BOTTOM)],
+            FLOOR_THICKNESS,
             graphics::BLACK,
         )?;
-        graphics::draw(ctx, &line, (Point2::new(0.0, 0.0),))
+
+        for i in 0..(WORLD_WIDTH / size) as i32 {
+            let half_thickness = BOTTOM + 10.0;
+            let start = i as f32 * size;
+            mb.line(
+                &[
+                    Point2::new(start, half_thickness),
+                    Point2::new(start + 2.0, half_thickness),
+                ],
+                FLOOR_THICKNESS,
+                graphics::BLACK,
+            )?;
+        }
+        world.insert((), vec![(Position::new(0.0, 0.0), mb.build(ctx)?)]);
+
+        Ok(GameState {
+            config,
+            world,
+            camera: Camera::default(),
+            controls: Controls::default(),
+            tick: 0,
+        })
     }
 }
 
@@ -205,128 +319,171 @@ fn limit(v: f32, max: f32) -> f32 {
     }
 }
 
-/// Camera with zoom
+/// Camera
 ///
-/// relative_x = (x - camera_center.x) * zoom + (SCREE_WIDTH / 2)
+/// relative_x = (x - camera_center.x) + (SCREE_WIDTH / 2)
 ///
-/// relative_y = (y - camera_center.y) * zoom + (SCREE_HEIGHT / 2)
+/// relative_y = (y - camera_center.y) + (SCREE_HEIGHT / 2)
 #[inline(always)]
-fn relative_point(camera: Vector2, zoom: f32, point: Point2) -> Point2 {
+fn relative_point(camera: Vector2, point: Point2) -> Point2 {
     let moved = point - camera;
-    let scaled = moved * zoom;
+    let scaled = moved;
     Point2::new(scaled.x + MIDDLE_X, scaled.y + MIDDLE_Y)
 }
 
-impl event::EventHandler for GameState {
+impl ggez::event::EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         while timer::check_update_time(ctx, DESIRED_FPS) {
             self.tick += 1;
-            if self.walker.position.y < self.highest_jump {
-                self.highest_jump = self.walker.position.y;
-            }
 
-            if self.walker.is_grounded() {
-                if self.left_held {
-                    self.walker.apply_force(Vector2::new(-ACCELERATION, 0.0));
-                }
+            let query = <(
+                Write<Acceleration>,
+                Write<Gravity>,
+                Read<Velocity>,
+                Read<Position>,
+                Read<Mass>,
+            )>::query()
+            .filter(component::<Player>());
 
-                if self.right_held {
-                    self.walker.apply_force(Vector2::new(ACCELERATION, 0.0));
-                }
+            for (mut acceleration, mut gravity, velocity, pos, mass) in
+                query.iter_mut(&mut self.world)
+            {
+                if pos.is_grounded() {
+                    if self.controls.left_held {
+                        acceleration.apply_force(
+                            &Vector2::new(-self.config.player.acceleration, 0.0),
+                            mass.0,
+                        );
+                    }
 
-                if self.jump_pressed {
-                    self.highest_jump = self.walker.position.y;
-                    let mag = self.walker.velocity.magnitude();
-                    if mag <= f32::EPSILON {
-                        self.walker
-                            .apply_force(Vector2::new(0.0, -JUMP_ACCELERATION));
-                    } else {
-                        self.walker.apply_force(Vector2::new(
-                            0.0,
-                            -JUMP_ACCELERATION * (1.0 + (mag / 30.0)),
-                        ));
+                    if self.controls.right_held {
+                        acceleration.apply_force(
+                            &Vector2::new(self.config.player.acceleration, 0.0),
+                            mass.0,
+                        );
+                    }
+
+                    if self.controls.jump_pressed {
+                        let mag = velocity.0.magnitude();
+                        if mag <= f32::EPSILON {
+                            acceleration.apply_force(
+                                &Vector2::new(0.0, -self.config.player.jump_acceleration),
+                                mass.0,
+                            );
+                        } else {
+                            acceleration.apply_force(
+                                &Vector2::new(
+                                    0.0,
+                                    -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
+                                ),
+                                mass.0,
+                            );
+                        }
                     }
                 }
-
-                let mut friction = self.walker.velocity.clone();
-                friction *= -1.0;
-                friction = friction.normalize_safe();
-                friction *= FRICTION * NORMAL_FORCE;
-                self.walker.apply_force(friction);
+                if self.controls.jump_held {
+                    gravity.0.y = self.config.physics.gravity * self.config.player.float_modifier;
+                } else {
+                    gravity.0.y = self.config.physics.gravity;
+                }
             }
 
-            if self.jump_held {
-                self.walker.apply_gravity(&self.world.float_gravity);
-            } else {
-                self.walker.apply_gravity(&self.world.gravity);
+            let query = <(
+                Write<Acceleration>,
+                Write<Velocity>,
+                Write<Position>,
+                Read<Mass>,
+                Read<Gravity>,
+                Read<Size>,
+            )>::query();
+            for (mut acceleration, mut velocity, mut position, mass, gravity, size) in
+                query.iter_mut(&mut self.world)
+            {
+                acceleration.apply_gravity(&gravity.0);
+
+                if position.is_grounded() {
+                    let mut friction = velocity.0.clone();
+                    friction *= -1.0;
+                    friction = friction.normalize_safe();
+                    friction *= self.config.physics.friction * self.config.physics.normal_force;
+                    acceleration.apply_force(&friction, mass.0);
+                }
+
+                // apply acceleration
+                velocity.0 += acceleration.0;
+
+                acceleration.0 *= 0.0;
+                // limit velocity
+                velocity.0.x = limit(velocity.0.x, self.config.physics.max_velocity);
+                velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
+
+                if velocity.0.x.abs() < 0.06 {
+                    velocity.0.x = 0.0;
+                }
+
+                if velocity.0.y.abs() < 0.06 {
+                    velocity.0.y = 0.0;
+                }
+
+                // apply velocity
+                position.0 += velocity.0;
+
+                let half_size = size.0 / 2.0;
+                let max_x = WORLD_WIDTH - half_size;
+                let min_x = half_size;
+
+                // stop
+                if position.0.x >= max_x {
+                    position.0.x = max_x;
+                    velocity.0.x = 0.0;
+                } else if position.0.x <= min_x {
+                    position.0.x = min_x;
+                    velocity.0.x = 0.0;
+                }
+
+                let max_y = WORLD_HEIGHT - half_size;
+                let min_y = half_size;
+
+                if position.0.y >= FLOOR {
+                    position.0.y = FLOOR;
+                    velocity.0.y = 0.0;
+                } else if position.0.y >= max_y {
+                    position.0.y = max_y;
+                    velocity.0.y = 0.0;
+                } else if position.0.y <= min_y {
+                    position.0.y = min_y;
+                    velocity.0.y = 0.0;
+                }
             }
 
-            // apply acceleration
-            self.walker.velocity += self.walker.acceleration;
+            let query = Read::<Position>::query().filter(component::<Player>());
+            for position in query.iter(&self.world) {
+                let difference = self.camera.center.x - position.0.x;
+                if difference.abs() > self.config.camera.deadzone {
+                    self.camera.center.x =
+                        position.0.x + (self.config.camera.deadzone * difference.signum())
+                }
+                if self.camera.mode == CameraMode::Free {
+                    self.camera.center.y = position.0.y;
+                }
 
-            // reset acceleration
-            self.walker.acceleration *= 0.0;
-
-            // limit velocity
-            self.walker.velocity.x = limit(self.walker.velocity.x, MAX_VELOCITY);
-            self.walker.velocity.y = limit(self.walker.velocity.y, MAX_JUMP_VELOCITY);
-
-            if self.walker.velocity.x.abs() < 0.06 {
-                self.walker.velocity.x = 0.0;
+                if self.camera.center.x < WIDTH / 2.0 {
+                    self.camera.center.x = WIDTH / 2.0;
+                } else if self.camera.center.x > WORLD_WIDTH - (WIDTH / 2.0) {
+                    self.camera.center.x = WORLD_WIDTH - (WIDTH / 2.0)
+                }
+                if self.camera.center.y < HEIGHT / 2.0 {
+                    self.camera.center.y = HEIGHT / 2.0;
+                } else if self.camera.center.y > WORLD_HEIGHT - (HEIGHT / 2.0) {
+                    self.camera.center.y = WORLD_HEIGHT - (HEIGHT / 2.0);
+                }
             }
 
-            if self.walker.velocity.y.abs() < 0.06 {
-                self.walker.velocity.y = 0.0;
-            }
-
-            // apply velocity
-            self.walker.position += self.walker.velocity;
-
-            let difference = self.world.camera_center.x - self.walker.position.x;
-            if difference.abs() > CAMERA_DEADZONE {
-                self.world.camera_center.x =
-                    self.walker.position.x + (CAMERA_DEADZONE * difference.signum())
-            }
-            if self.world.camera_mode == CameraMode::Free {
-                self.world.camera_center.y = self.walker.position.y;
-            }
-
-            // stop
-            if self.walker.position.x >= MAX_X {
-                self.walker.position.x = MAX_X;
-                self.walker.velocity.x = 0.0;
-            } else if self.walker.position.x <= MIN_X {
-                self.walker.position.x = MIN_X;
-                self.walker.velocity.x = 0.0;
-            }
-
-            if self.walker.position.y >= FLOOR {
-                self.walker.position.y = FLOOR;
-                self.walker.velocity.y = 0.0;
-            } else if self.walker.position.y >= MAX_Y {
-                self.walker.position.y = MAX_Y;
-                self.walker.velocity.y = 0.0;
-            } else if self.walker.position.y <= MIN_Y {
-                self.walker.position.y = MIN_Y;
-                self.walker.velocity.y = 0.0;
-            }
-
-            if self.world.camera_center.x < WIDTH / 2.0 {
-                self.world.camera_center.x = WIDTH / 2.0;
-            } else if self.world.camera_center.x > WORLD_WIDTH - (WIDTH / 2.0) {
-                self.world.camera_center.x = WORLD_WIDTH - (WIDTH / 2.0)
-            }
-            if self.world.camera_center.y < HEIGHT / 2.0 {
-                self.world.camera_center.y = HEIGHT / 2.0;
-            } else if self.world.camera_center.y > WORLD_HEIGHT - (HEIGHT / 2.0) {
-                self.world.camera_center.y = WORLD_HEIGHT - (HEIGHT / 2.0);
-            }
-
-            self.left_pressed = false;
-            self.right_pressed = false;
-            self.up_pressed = false;
-            self.down_pressed = false;
-            self.jump_pressed = false;
+            self.controls.left_pressed = false;
+            self.controls.right_pressed = false;
+            self.controls.up_pressed = false;
+            self.controls.down_pressed = false;
+            self.controls.jump_pressed = false;
         }
 
         Ok(())
@@ -334,69 +491,10 @@ impl event::EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [1.0, 1.0, 1.0, 1.0].into());
-        if self.draw_highest_jump {
-            let half_thickness = self.highest_jump + (FLOOR_THICKNESS / 2.0) - HALF_SIZE;
-            self.draw_line(
-                ctx,
-                FLOOR_THICKNESS,
-                Point2::new(0.0, half_thickness),
-                Point2::new(WIDTH, half_thickness),
-            )?;
-        }
 
-        self.draw_line(
-            ctx,
-            FLOOR_THICKNESS,
-            Point2::new(0.0, BOTTOM),
-            Point2::new(WORLD_WIDTH, BOTTOM),
-        )?;
-
-        let size = SIZE * 2.0;
-        let mut mb = MeshBuilder::new();
-        for i in 0..(WORLD_WIDTH / size) as i32 {
-            let half_thickness = BOTTOM + 10.0;
-            let start = i as f32 * size;
-            mb.line(
-                &[
-                    self.relative_point(Point2::new(start, half_thickness)),
-                    self.relative_point(Point2::new(start + 2.0, half_thickness)),
-                ],
-                FLOOR_THICKNESS,
-                graphics::BLACK,
-            )?;
-        }
-        let mesh = mb.build(ctx)?;
-        graphics::draw(ctx, &mesh, (na::Point2::new(0.0, 0.0),))?;
-
-        let circle = graphics::Mesh::new_circle(
-            ctx,
-            graphics::DrawMode::fill(),
-            self.relative_point(self.walker.position),
-            HALF_SIZE * self.world.zoom,
-            0.1,
-            self.walker.color,
-        )?;
-        graphics::draw(ctx, &circle, (Point2::new(0.0, 0.0),))?;
-
-        let difference_left = MAX_X - self.walker.position.x;
-        let difference_right = self.walker.position.x - MIN_X;
-        let new_x = if difference_left < 0.0 {
-            Some(-HALF_SIZE + difference_left.abs())
-        } else if difference_right < 0.0 {
-            Some(WIDTH + HALF_SIZE - difference_right.abs())
-        } else {
-            None
-        };
-        if let Some(x) = new_x {
-            let circle = graphics::Mesh::new_circle(
-                ctx,
-                graphics::DrawMode::fill(),
-                self.relative_point(Point2::new(x, self.walker.position.y)),
-                HALF_SIZE * self.world.zoom,
-                0.1,
-                self.walker.color,
-            )?;
-            graphics::draw(ctx, &circle, (Point2::new(0.0, 0.0),))?;
+        let query = <(Read<Position>, Read<Mesh>)>::query();
+        for (pos, mesh) in query.iter_mut(&mut self.world) {
+            graphics::draw(ctx, &*mesh, (relative_point(self.camera.center, pos.0),))?;
         }
 
         if self.tick % 50 == 0 {
@@ -417,24 +515,24 @@ impl event::EventHandler for GameState {
         match keycode {
             KeyCode::Escape => quit(ctx),
             KeyCode::A | KeyCode::Left => {
-                self.left_pressed = !repeat;
-                self.left_held = true;
+                self.controls.left_pressed = !repeat;
+                self.controls.left_held = true;
             }
             KeyCode::D | KeyCode::Right => {
-                self.right_pressed = !repeat;
-                self.right_held = true;
+                self.controls.right_pressed = !repeat;
+                self.controls.right_held = true;
             }
             KeyCode::W /*| KeyCode::Up*/ => {
-                self.up_pressed = !repeat;
-                self.up_held = true;
+                self.controls.up_pressed = !repeat;
+                self.controls.up_held = true;
             }
             KeyCode::S | KeyCode::Down => {
-                self.down_pressed = !repeat;
-                self.down_held = true;
+                self.controls.down_pressed = !repeat;
+                self.controls.down_held = true;
             }
             KeyCode::Space | KeyCode::Up => {
-                self.jump_pressed = !repeat;
-                self.jump_held = true;
+                self.controls.jump_pressed = !repeat;
+                self.controls.jump_held = true;
             }
             _ => (),
         }
@@ -443,24 +541,24 @@ impl event::EventHandler for GameState {
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
         match keycode {
             KeyCode::A | KeyCode::Left => {
-                self.left_pressed = false;
-                self.left_held = false;
+                self.controls.left_pressed = false;
+                self.controls.left_held = false;
             }
             KeyCode::D | KeyCode::Right => {
-                self.right_pressed = false;
-                self.right_held = false;
+                self.controls.right_pressed = false;
+                self.controls.right_held = false;
             }
             KeyCode::W | KeyCode::Up => {
-                self.up_pressed = false;
-                self.up_held = false;
+                self.controls.up_pressed = false;
+                self.controls.up_held = false;
             }
             KeyCode::S | KeyCode::Down => {
-                self.down_pressed = false;
-                self.down_held = false;
+                self.controls.down_pressed = false;
+                self.controls.down_held = false;
             }
             KeyCode::Space => {
-                self.jump_pressed = false;
-                self.jump_held = false;
+                self.controls.jump_pressed = false;
+                self.controls.jump_held = false;
             }
             _ => (),
         }
@@ -490,5 +588,5 @@ fn main() -> GameResult {
     let (ctx, event_loop) = &mut cb.build()?;
 
     let state = &mut GameState::new(ctx)?;
-    event::run(ctx, event_loop, state)
+    ggez::event::run(ctx, event_loop, state)
 }
