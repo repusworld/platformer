@@ -13,7 +13,7 @@ use ggez::graphics::{Mesh, MeshBuilder};
 use ggez::Context;
 use ggez::*;
 use graphics::Color;
-use legion::prelude::*;
+use hecs::*;
 use nalgebra as na;
 
 type Point2 = na::Point2<f32>;
@@ -223,14 +223,13 @@ impl GameState {
         let start_x = WIDTH / 2.0;
         let start_y = WORLD_HEIGHT - 300.0;
 
-        let universe = Universe::new();
-        let mut world = universe.create_world();
+        let mut world = World::new();
 
         let config: Config = std::fs::read_to_string("config.toml")
             .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
             .unwrap_or_default();
 
-        let components = vec![(
+        world.spawn((
             Player,
             Position::new(start_x, start_y),
             Acceleration::new(0.0, 0.0),
@@ -246,28 +245,24 @@ impl GameState {
                 0.1,
                 Color::from_rgb(0, 0, 255),
             )?,
-        )];
-        world.insert((), components);
+        ));
 
-        world.insert(
-            (),
-            vec![(
-                Position::new(start_x + 50.0, start_y - 100.0),
-                Acceleration::new(0.0, 0.0),
-                Velocity::new(0.0, 0.0),
-                Size(config.player.size / 2.0),
-                Mass(config.player.mass),
-                Gravity(Vector2::new(0.0, 0.01)),
-                graphics::Mesh::new_circle(
-                    ctx,
-                    graphics::DrawMode::fill(),
-                    Point2::new(0.0, -(config.player.size / 4.0)),
-                    config.player.size / 4.0,
-                    0.1,
-                    Color::from_rgb(255, 0, 0),
-                )?,
-            )],
-        );
+        world.spawn((
+            Position::new(start_x + 50.0, start_y - 100.0),
+            Acceleration::new(0.0, 0.0),
+            Velocity::new(0.0, 0.0),
+            Size(config.player.size / 2.0),
+            Mass(config.player.mass),
+            Gravity(Vector2::new(0.0, 0.01)),
+            graphics::Mesh::new_circle(
+                ctx,
+                graphics::DrawMode::fill(),
+                Point2::new(0.0, -(config.player.size / 4.0)),
+                config.player.size / 4.0,
+                0.1,
+                Color::from_rgb(255, 0, 0),
+            )?,
+        ));
 
         let size = config.player.size * 2.0;
         let mut mb = MeshBuilder::new();
@@ -289,7 +284,7 @@ impl GameState {
                 graphics::BLACK,
             )?;
         }
-        world.insert((), vec![(Position::new(0.0, 0.0), mb.build(ctx)?)]);
+        world.spawn((Position::new(0.0, 0.0), mb.build(ctx)?));
 
         Ok(GameState {
             config,
@@ -339,18 +334,15 @@ impl ggez::event::EventHandler for GameState {
         while timer::check_update_time(ctx, DESIRED_FPS) {
             self.tick += 1;
 
-            let query = <(
-                Write<Acceleration>,
-                Write<Gravity>,
-                Read<Velocity>,
-                Read<Position>,
-                Read<Mass>,
-            )>::query()
-            .filter(component::<Player>());
-
-            for (mut acceleration, mut gravity, velocity, pos, mass) in
-                query.iter_mut(&mut self.world)
-            {
+            for (_id, (acceleration, gravity, velocity, pos, mass, _)) in &mut self.world.query::<(
+                &mut Acceleration,
+                &mut Gravity,
+                &Velocity,
+                &Position,
+                &Mass,
+                &Player,
+            )>(
+            ) {
                 if pos.is_grounded() || self.config.player.allow_air_control {
                     if self.controls.left_held {
                         acceleration.apply_force(
@@ -393,16 +385,15 @@ impl ggez::event::EventHandler for GameState {
                 }
             }
 
-            let query = <(
-                Write<Acceleration>,
-                Write<Velocity>,
-                Write<Position>,
-                Read<Mass>,
-                Read<Gravity>,
-                Read<Size>,
-            )>::query();
-            for (mut acceleration, mut velocity, mut position, mass, gravity, size) in
-                query.iter_mut(&mut self.world)
+            for (id, (acceleration, velocity, position, mass, gravity, size)) in
+                &mut self.world.query::<(
+                    &mut Acceleration,
+                    &mut Velocity,
+                    &mut Position,
+                    &Mass,
+                    &Gravity,
+                    &Size,
+                )>()
             {
                 acceleration.apply_gravity(&gravity.0);
 
@@ -461,8 +452,7 @@ impl ggez::event::EventHandler for GameState {
                 }
             }
 
-            let query = Read::<Position>::query().filter(component::<Player>());
-            for position in query.iter(&self.world) {
+            for (_id, (position, _)) in &mut self.world.query::<(&Position, &Player)>() {
                 let difference = self.camera.center.x - position.0.x;
                 if difference.abs() > self.config.camera.deadzone {
                     self.camera.center.x =
@@ -497,8 +487,7 @@ impl ggez::event::EventHandler for GameState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [1.0, 1.0, 1.0, 1.0].into());
 
-        let query = <(Read<Position>, Read<Mesh>)>::query();
-        for (pos, mesh) in query.iter_mut(&mut self.world) {
+        for (_id, (pos, mesh)) in &mut self.world.query::<(&Position, &Mesh)>() {
             graphics::draw(ctx, &*mesh, (relative_point(self.camera.center, pos.0),))?;
         }
 

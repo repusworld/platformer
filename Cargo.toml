@@ -12,7 +12,7 @@ opt-level = 2
 
 [dependencies]
 ggez = "0.5"
-legion = "0.2"
+hecs = "0.2"
 serde = "1.0.114"
 serde_derive = "1.0.114"
 toml = "0.5.6"
