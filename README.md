@@ -1,6 +1,10 @@
 # A project to experiment with ggez
 this should turn into a game some day
 
+# Decisions
+## ECS
+It was chosen to use hecs. See [decision](docs/decisions/ecs_libraries/decision.md).
+
 # Things I learned
 
 Below are things I learned while working on this.
