@@ -27,5 +27,5 @@ It was a pretty close call between hecs and legion, but for now I'm going with h
 Also, because those two are so similar, I think it would be easy to change them in the future if the need arises.
 
 ### Here are the diffs I used to compare the complexity of the libraries
-[hecs vs legion](hecs_vs_legion.html)
-[hecs vs shipyard](hecs_vs_shipyard.html)
+- [hecs vs legion](hecs_vs_legion.md)
+- [hecs vs shipyard](hecs_vs_shipyard.md)
