@@ -1,0 +1,25 @@
+[size]
+width = 10_000
+height = 10_000
+
+[start]
+x = 2.0
+y = 1.0
+
+[[platforms]]
+x = 0
+y = 2
+width = 4
+height = 1
+
+[[platforms]]
+x = 6
+y = 8
+width = 4
+height = 1
+
+[[platforms]]
+x = 12
+y = 14
+width = 4
+height = 1
