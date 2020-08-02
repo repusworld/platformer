@@ -18,5 +18,5 @@ movement_deadzone = 0.0001
 deadzone = 16.0
 
 [debug]
-draw_grid = true
-draw_bounds = true
+draw_grid = false
+draw_bounds = false
