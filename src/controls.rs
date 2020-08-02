@@ -7,15 +7,18 @@ use crate::physics::*;
 impl GameState {
     #[inline(always)]
     pub fn do_movement(&mut self, _ctx: &mut Context) {
-        for (_id, (acceleration, gravity, velocity, pos, mass, _)) in &mut self.world.query::<(
-            &mut Acceleration,
-            &mut Gravity,
-            &Velocity,
-            &Position,
-            &Mass,
-            &Player,
-        )>() {
-            if pos.is_grounded() || self.config.player.allow_air_control {
+        for (_id, (acceleration, gravity, velocity, pos, mass, grounded, _)) in
+            &mut self.world.query::<(
+                &mut Acceleration,
+                &mut Gravity,
+                &Velocity,
+                &Position,
+                &Mass,
+                &Grounded,
+                &Player,
+            )>()
+        {
+            if grounded.0 || self.config.player.allow_air_control {
                 if self.controls.left_held {
                     acceleration
                         .apply_force(&Vector2::new(-self.config.player.acceleration, 0.0), mass.0);
@@ -27,7 +30,7 @@ impl GameState {
                 }
             }
 
-            if pos.is_grounded() {
+            if grounded.0 {
                 if self.controls.jump_pressed {
                     let mag = velocity.0.magnitude();
                     if mag <= f32::EPSILON {

@@ -1,10 +1,10 @@
 use ggez::graphics;
+use ggez::graphics::Rect;
 use graphics::Color;
 
 use crate::common::*;
 use crate::components::*;
 use crate::config::*;
-use ggez::graphics::Rect;
 
 #[derive(Debug, PartialEq)]
 pub enum CameraMode {
@@ -76,6 +76,12 @@ impl GameState {
                 Color::from_rgb(0, 0, 255),
             )?,
             ZOrder(0),
+            BoundingBox(Rect::new(
+                -(config.player.size / 2.0),
+                -(config.player.size),
+                config.player.size,
+                config.player.size,
+            )),
         ));
 
         world.spawn((
@@ -94,6 +100,12 @@ impl GameState {
                 Color::from_rgb(255, 0, 0),
             )?,
             ZOrder(10),
+            BoundingBox(Rect::new(
+                -(config.player.size / 4.0),
+                -(config.player.size / 2.0),
+                (config.player.size / 2.0),
+                (config.player.size / 2.0),
+            )),
         ));
 
         world.spawn((
@@ -108,7 +120,7 @@ impl GameState {
                 graphics::BLACK,
             )?,
             ZOrder(20),
-            BoundingBox(Rect::new(0.0, FLOOR + GRID_SIZE, WORLD_WIDTH, GRID_SIZE)),
+            BoundingBox(Rect::new(0.0, FLOOR, WORLD_WIDTH, GRID_SIZE)),
         ));
 
         let mut mb = graphics::MeshBuilder::new();

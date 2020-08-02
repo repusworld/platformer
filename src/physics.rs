@@ -39,25 +39,30 @@ pub fn apply_gravity(v: &mut Vector2, force: &Vector2) {
 impl GameState {
     #[inline(always)]
     pub fn apply_physics(&mut self, _ctx: &mut Context) {
-        for (_id, (acceleration, velocity, position, mass, gravity, size)) in
-            &mut self.world.query::<(
-                &mut Acceleration,
-                &mut Velocity,
-                &mut Position,
-                &Mass,
-                &Gravity,
-                &Size,
-            )>()
+        for (_id, (acceleration, velocity, mass, grounded)) in
+            &mut self
+                .world
+                .query::<(&mut Acceleration, &mut Velocity, &Mass, &Grounded)>()
         {
-            acceleration.apply_gravity(&gravity.0);
-
-            if position.is_grounded() {
+            if grounded.0 {
                 let mut friction = velocity.0.clone();
                 friction *= -1.0;
                 friction = friction.normalize_safe();
                 friction *= self.config.physics.friction * self.config.physics.normal_force;
                 acceleration.apply_force(&friction, mass.0);
             }
+        }
+
+        for (_id, (acceleration, velocity, position, &BoundingBox(bbox), gravity)) in
+            &mut self.world.query::<(
+                &mut Acceleration,
+                &mut Velocity,
+                &mut Position,
+                &BoundingBox,
+                &Gravity,
+            )>()
+        {
+            acceleration.apply_gravity(&gravity.0);
 
             // apply acceleration
             velocity.0 += acceleration.0;
@@ -77,19 +82,36 @@ impl GameState {
 
             // apply velocity
             position.0 += velocity.0;
+        }
+    }
+
+    #[inline(always)]
+    pub fn collision_detection(&mut self, _ctx: &mut Context) {
+        let mut grounded_entities = vec![];
+        for (id, (velocity, position, &BoundingBox(bbox), size)) in
+            &mut self
+                .world
+                .query::<(&mut Velocity, &mut Position, &BoundingBox, &Size)>()
+        {
+            let mut bbox = bbox.clone();
+            bbox.translate(Vector2::new(position.0.x, position.0.y));
+            for (_other, (BoundingBox(other))) in self
+                .world
+                .query::<&BoundingBox>()
+                .iter()
+                .filter(|(other, _)| id != *other)
+                .filter(|(_, BoundingBox(other))| other.overlaps(&bbox))
+            {
+                if bbox.bottom() >= other.top() {
+                    velocity.0.y = 0.0;
+                    position.0.y = other.top();
+                    grounded_entities.push(id);
+                }
+            }
 
             let half_size = size.0 / 2.0;
             let max_x = WORLD_WIDTH - half_size;
             let min_x = half_size;
-
-            for (id, (BoundingBox(bbox))) in self
-                .world
-                .query::<&BoundingBox>()
-                .iter()
-                .filter(|(_, (BoundingBox(bbox)))| bbox.contains(position.0))
-            {
-                dbg!(id);
-            }
 
             // stop
             if position.0.x >= max_x {
@@ -103,16 +125,25 @@ impl GameState {
             let max_y = WORLD_HEIGHT - half_size;
             let min_y = half_size;
 
-            if position.0.y >= FLOOR {
-                position.0.y = FLOOR;
-                velocity.0.y = 0.0;
-            } else if position.0.y >= max_y {
+            // if position.0.y >= FLOOR {
+            //     position.0.y = FLOOR;
+            //     velocity.0.y = 0.0;
+            // } else
+            if position.0.y >= max_y {
                 position.0.y = max_y;
                 velocity.0.y = 0.0;
             } else if position.0.y <= min_y {
                 position.0.y = min_y;
                 velocity.0.y = 0.0;
             }
+        }
+
+        for (_id, (grounded)) in &mut self.world.query::<(&mut Grounded)>() {
+            grounded.0 = false;
+        }
+
+        for id in grounded_entities {
+            self.world.insert_one(id, Grounded(true));
         }
     }
 }

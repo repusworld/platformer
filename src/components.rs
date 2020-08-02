@@ -47,10 +47,6 @@ impl Position {
     pub fn new(x: f32, y: f32) -> Self {
         Position(Point2::new(x, y))
     }
-
-    pub fn is_grounded(&self) -> bool {
-        (FLOOR - self.0.y).abs() <= f32::EPSILON
-    }
 }
 
 pub struct Size(pub f32);
@@ -62,3 +58,5 @@ pub struct Player;
 pub struct ZOrder(pub i32);
 
 pub struct BoundingBox(pub Rect);
+
+pub struct Grounded(pub bool);
