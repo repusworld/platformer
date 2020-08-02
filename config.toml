@@ -1,6 +1,6 @@
 [player]
 mass = 10.0
-size = 50.0
+size = 32.0
 acceleration = 1.0
 jump_acceleration = 70.0
 float_modifier = 0.5

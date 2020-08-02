@@ -14,6 +14,7 @@ use ggez::Context;
 use ggez::*;
 use graphics::Color;
 use hecs::*;
+use itertools::Itertools;
 use nalgebra as na;
 
 type Point2 = na::Point2<f32>;
@@ -25,10 +26,11 @@ const WIDTH: f32 = 1280.0;
 const MIDDLE_X: f32 = WIDTH / 2.0;
 const HEIGHT: f32 = 720.0;
 const MIDDLE_Y: f32 = HEIGHT / 2.0;
-const FLOOR: f32 = WORLD_HEIGHT - 100.0 - 30.0;
+const FLOOR: f32 = ((WORLD_HEIGHT / GRID_SIZE) as i32 as f32 * GRID_SIZE) - (GRID_SIZE * 2.0);
 const FLOOR_THICKNESS: f32 = 5.0;
+const GRID_SIZE: f32 = 32.0;
+const GRID_THICKNESS: f32 = 1.0;
 const DESIRED_FPS: u32 = 60;
-const BOTTOM: f32 = FLOOR + (FLOOR_THICKNESS / 2.0);
 
 trait SafeNormalization {
     fn normalize_safe(&self) -> Self;
@@ -197,6 +199,9 @@ impl Default for Camera {
 struct Player;
 
 #[derive(Default)]
+struct ZOrder(i32);
+
+#[derive(Default)]
 struct Controls {
     left_pressed: bool,
     left_held: bool,
@@ -245,6 +250,7 @@ impl GameState {
                 0.1,
                 Color::from_rgb(0, 0, 255),
             )?,
+            ZOrder(10),
         ));
 
         world.spawn((
@@ -262,29 +268,36 @@ impl GameState {
                 0.1,
                 Color::from_rgb(255, 0, 0),
             )?,
+            ZOrder(20),
         ));
 
-        let size = config.player.size * 2.0;
         let mut mb = MeshBuilder::new();
         mb.line(
-            &[Point2::new(0.0, BOTTOM), Point2::new(WORLD_WIDTH, BOTTOM)],
+            &[
+                Point2::new(0.0, FLOOR + (FLOOR_THICKNESS / 2.0)),
+                Point2::new(WORLD_WIDTH, FLOOR + (FLOOR_THICKNESS / 2.0)),
+            ],
             FLOOR_THICKNESS,
             graphics::BLACK,
         )?;
 
-        for i in 0..(WORLD_WIDTH / size) as i32 {
-            let half_thickness = BOTTOM + 10.0;
-            let start = i as f32 * size;
+        for i in 0..(WORLD_WIDTH / GRID_SIZE) as i32 + 1 {
+            let start = i as f32 * GRID_SIZE;
             mb.line(
-                &[
-                    Point2::new(start, half_thickness),
-                    Point2::new(start + 2.0, half_thickness),
-                ],
-                FLOOR_THICKNESS,
+                &[Point2::new(start, 0.0), Point2::new(start, WORLD_HEIGHT)],
+                GRID_THICKNESS,
                 graphics::BLACK,
             )?;
         }
-        world.spawn((Position::new(0.0, 0.0), mb.build(ctx)?));
+        for i in 0..(WORLD_HEIGHT / GRID_SIZE) as i32 + 1 {
+            let start = i as f32 * GRID_SIZE;
+            mb.line(
+                &[Point2::new(0.0, start), Point2::new(WORLD_WIDTH, start)],
+                GRID_THICKNESS,
+                graphics::BLACK,
+            )?;
+        }
+        world.spawn((Position::new(0.0, 0.0), mb.build(ctx)?, ZOrder(30)));
 
         Ok(GameState {
             config,
@@ -293,6 +306,150 @@ impl GameState {
             controls: Controls::default(),
             tick: 0,
         })
+    }
+
+    #[inline(always)]
+    fn do_movement(&mut self, _ctx: &mut Context) {
+        for (_id, (acceleration, gravity, velocity, pos, mass, _)) in &mut self.world.query::<(
+            &mut Acceleration,
+            &mut Gravity,
+            &Velocity,
+            &Position,
+            &Mass,
+            &Player,
+        )>() {
+            if pos.is_grounded() || self.config.player.allow_air_control {
+                if self.controls.left_held {
+                    acceleration
+                        .apply_force(&Vector2::new(-self.config.player.acceleration, 0.0), mass.0);
+                }
+
+                if self.controls.right_held {
+                    acceleration
+                        .apply_force(&Vector2::new(self.config.player.acceleration, 0.0), mass.0);
+                }
+            }
+
+            if pos.is_grounded() {
+                if self.controls.jump_pressed {
+                    let mag = velocity.0.magnitude();
+                    if mag <= f32::EPSILON {
+                        acceleration.apply_force(
+                            &Vector2::new(0.0, -self.config.player.jump_acceleration),
+                            mass.0,
+                        );
+                    } else {
+                        acceleration.apply_force(
+                            &Vector2::new(
+                                0.0,
+                                -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
+                            ),
+                            mass.0,
+                        );
+                    }
+                }
+            }
+            if self.controls.jump_held {
+                gravity.0.y = self.config.physics.gravity * self.config.player.float_modifier;
+            } else {
+                gravity.0.y = self.config.physics.gravity;
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn apply_physics(&mut self, _ctx: &mut Context) {
+        for (_id, (acceleration, velocity, position, mass, gravity, size)) in
+            &mut self.world.query::<(
+                &mut Acceleration,
+                &mut Velocity,
+                &mut Position,
+                &Mass,
+                &Gravity,
+                &Size,
+            )>()
+        {
+            acceleration.apply_gravity(&gravity.0);
+
+            if position.is_grounded() {
+                let mut friction = velocity.0.clone();
+                friction *= -1.0;
+                friction = friction.normalize_safe();
+                friction *= self.config.physics.friction * self.config.physics.normal_force;
+                acceleration.apply_force(&friction, mass.0);
+            }
+
+            // apply acceleration
+            velocity.0 += acceleration.0;
+
+            acceleration.0 *= 0.0;
+            // limit velocity
+            velocity.0.x = limit(velocity.0.x, self.config.physics.max_horizontal_velocity);
+            velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
+
+            if velocity.0.x.abs() < self.config.physics.movement_deadzone {
+                velocity.0.x = 0.0;
+            }
+
+            if velocity.0.y.abs() < self.config.physics.movement_deadzone {
+                velocity.0.y = 0.0;
+            }
+
+            // apply velocity
+            position.0 += velocity.0;
+
+            let half_size = size.0 / 2.0;
+            let max_x = WORLD_WIDTH - half_size;
+            let min_x = half_size;
+
+            // stop
+            if position.0.x >= max_x {
+                position.0.x = max_x;
+                velocity.0.x = 0.0;
+            } else if position.0.x <= min_x {
+                position.0.x = min_x;
+                velocity.0.x = 0.0;
+            }
+
+            let max_y = WORLD_HEIGHT - half_size;
+            let min_y = half_size;
+
+            if position.0.y >= FLOOR {
+                position.0.y = FLOOR;
+                velocity.0.y = 0.0;
+            } else if position.0.y >= max_y {
+                position.0.y = max_y;
+                velocity.0.y = 0.0;
+            } else if position.0.y <= min_y {
+                position.0.y = min_y;
+                velocity.0.y = 0.0;
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn move_camera(&mut self, _ctx: &mut Context) {
+        for (_id, (position, _)) in &mut self.world.query::<(&Position, &Player)>() {
+            let difference = self.camera.center.x - position.0.x;
+            if difference.abs() > self.config.camera.deadzone {
+                self.camera.center.x =
+                    position.0.x + (self.config.camera.deadzone * difference.signum())
+            }
+            if self.camera.mode == CameraMode::Free {
+                self.camera.center.y = position.0.y;
+            }
+
+            if self.camera.center.x < WIDTH / 2.0 {
+                self.camera.center.x = WIDTH / 2.0;
+            } else if self.camera.center.x > WORLD_WIDTH - (WIDTH / 2.0) {
+                self.camera.center.x = WORLD_WIDTH - (WIDTH / 2.0)
+            }
+            if self.camera.center.y < HEIGHT / 2.0 {
+                self.camera.center.y = HEIGHT / 2.0;
+            } else if self.camera.center.y > WORLD_HEIGHT - (HEIGHT / 2.0) {
+                self.camera.center.y = WORLD_HEIGHT - (HEIGHT / 2.0);
+            }
+        }
     }
 }
 
@@ -334,145 +491,9 @@ impl ggez::event::EventHandler for GameState {
         while timer::check_update_time(ctx, DESIRED_FPS) {
             self.tick += 1;
 
-            for (_id, (acceleration, gravity, velocity, pos, mass, _)) in &mut self.world.query::<(
-                &mut Acceleration,
-                &mut Gravity,
-                &Velocity,
-                &Position,
-                &Mass,
-                &Player,
-            )>(
-            ) {
-                if pos.is_grounded() || self.config.player.allow_air_control {
-                    if self.controls.left_held {
-                        acceleration.apply_force(
-                            &Vector2::new(-self.config.player.acceleration, 0.0),
-                            mass.0,
-                        );
-                    }
-
-                    if self.controls.right_held {
-                        acceleration.apply_force(
-                            &Vector2::new(self.config.player.acceleration, 0.0),
-                            mass.0,
-                        );
-                    }
-                }
-
-                if pos.is_grounded() {
-                    if self.controls.jump_pressed {
-                        let mag = velocity.0.magnitude();
-                        if mag <= f32::EPSILON {
-                            acceleration.apply_force(
-                                &Vector2::new(0.0, -self.config.player.jump_acceleration),
-                                mass.0,
-                            );
-                        } else {
-                            acceleration.apply_force(
-                                &Vector2::new(
-                                    0.0,
-                                    -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
-                                ),
-                                mass.0,
-                            );
-                        }
-                    }
-                }
-                if self.controls.jump_held {
-                    gravity.0.y = self.config.physics.gravity * self.config.player.float_modifier;
-                } else {
-                    gravity.0.y = self.config.physics.gravity;
-                }
-            }
-
-            for (id, (acceleration, velocity, position, mass, gravity, size)) in
-                &mut self.world.query::<(
-                    &mut Acceleration,
-                    &mut Velocity,
-                    &mut Position,
-                    &Mass,
-                    &Gravity,
-                    &Size,
-                )>()
-            {
-                acceleration.apply_gravity(&gravity.0);
-
-                if position.is_grounded() {
-                    let mut friction = velocity.0.clone();
-                    friction *= -1.0;
-                    friction = friction.normalize_safe();
-                    friction *= self.config.physics.friction * self.config.physics.normal_force;
-                    acceleration.apply_force(&friction, mass.0);
-                }
-
-                // apply acceleration
-                velocity.0 += acceleration.0;
-
-                acceleration.0 *= 0.0;
-                // limit velocity
-                velocity.0.x = limit(velocity.0.x, self.config.physics.max_horizontal_velocity);
-                velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
-
-                if velocity.0.x.abs() < self.config.physics.movement_deadzone {
-                    velocity.0.x = 0.0;
-                }
-
-                if velocity.0.y.abs() < self.config.physics.movement_deadzone {
-                    velocity.0.y = 0.0;
-                }
-
-                // apply velocity
-                position.0 += velocity.0;
-
-                let half_size = size.0 / 2.0;
-                let max_x = WORLD_WIDTH - half_size;
-                let min_x = half_size;
-
-                // stop
-                if position.0.x >= max_x {
-                    position.0.x = max_x;
-                    velocity.0.x = 0.0;
-                } else if position.0.x <= min_x {
-                    position.0.x = min_x;
-                    velocity.0.x = 0.0;
-                }
-
-                let max_y = WORLD_HEIGHT - half_size;
-                let min_y = half_size;
-
-                if position.0.y >= FLOOR {
-                    position.0.y = FLOOR;
-                    velocity.0.y = 0.0;
-                } else if position.0.y >= max_y {
-                    position.0.y = max_y;
-                    velocity.0.y = 0.0;
-                } else if position.0.y <= min_y {
-                    position.0.y = min_y;
-                    velocity.0.y = 0.0;
-                }
-            }
-
-            for (_id, (position, _)) in &mut self.world.query::<(&Position, &Player)>() {
-                let difference = self.camera.center.x - position.0.x;
-                if difference.abs() > self.config.camera.deadzone {
-                    self.camera.center.x =
-                        position.0.x + (self.config.camera.deadzone * difference.signum())
-                }
-                if self.camera.mode == CameraMode::Free {
-                    self.camera.center.y = position.0.y;
-                }
-
-                if self.camera.center.x < WIDTH / 2.0 {
-                    self.camera.center.x = WIDTH / 2.0;
-                } else if self.camera.center.x > WORLD_WIDTH - (WIDTH / 2.0) {
-                    self.camera.center.x = WORLD_WIDTH - (WIDTH / 2.0)
-                }
-                if self.camera.center.y < HEIGHT / 2.0 {
-                    self.camera.center.y = HEIGHT / 2.0;
-                } else if self.camera.center.y > WORLD_HEIGHT - (HEIGHT / 2.0) {
-                    self.camera.center.y = WORLD_HEIGHT - (HEIGHT / 2.0);
-                }
-            }
+            self.do_movement(ctx);
+            self.apply_physics(ctx);
+            self.move_camera(ctx);
 
             self.controls.left_pressed = false;
             self.controls.right_pressed = false;
@@ -487,7 +508,13 @@ impl ggez::event::EventHandler for GameState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [1.0, 1.0, 1.0, 1.0].into());
 
-        for (_id, (pos, mesh)) in &mut self.world.query::<(&Position, &Mesh)>() {
+        for (_id, (pos, mesh, _z_order)) in &mut self
+            .world
+            .query::<(&Position, &Mesh, &ZOrder)>()
+            .iter()
+            .sorted_by_key(|(_id, (_pos, _mesh, z_order))| -z_order.0)
+        // sort by z-order, descending
+        {
             graphics::draw(ctx, &*mesh, (relative_point(self.camera.center, pos.0),))?;
         }
 
