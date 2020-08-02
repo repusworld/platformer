@@ -51,11 +51,11 @@ impl GameState {
         {
             acceleration.apply_gravity(&gravity.0);
 
-            for BoundingBox(bbox) in self
+            for (_id, (BoundingBox(bbox))) in self
                 .world
                 .query::<&BoundingBox>()
                 .iter()
-                .filter(|BoundingBox(bbox)| bbox.contains(position.0))
+                .filter(|(_, (BoundingBox(bbox)))| bbox.contains(position.0))
             {}
 
             if position.is_grounded() {
