@@ -24,3 +24,35 @@ pub struct Level {
     pub start: Start,
     pub platforms: Vec<Platform>,
 }
+
+impl Default for Level {
+    fn default() -> Self {
+        Level {
+            size: LevelSize {
+                width: 10_000.0,
+                height: 10_000.0,
+            },
+            start: Start { x: 2.0, y: 1.0 },
+            platforms: vec![
+                Platform {
+                    x: 0.0,
+                    y: 2.0,
+                    width: 4.0,
+                    height: 1.0,
+                },
+                Platform {
+                    x: 6.0,
+                    y: 8.0,
+                    width: 4.0,
+                    height: 1.0,
+                },
+                Platform {
+                    x: 12.0,
+                    y: 14.0,
+                    width: 4.0,
+                    height: 1.0,
+                },
+            ],
+        }
+    }
+}

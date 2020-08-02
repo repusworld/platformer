@@ -59,7 +59,9 @@ impl GameState {
             .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
             .unwrap_or_default();
 
-        let level: Level = toml::from_str(&std::fs::read_to_string("level.toml").unwrap()).unwrap();
+        let level: Level =
+            toml::from_str(&std::fs::read_to_string("level.toml").unwrap_or_default())
+                .unwrap_or_default();
 
         let mut world = World::new();
 

@@ -3,8 +3,8 @@ width = 10_000
 height = 10_000
 
 [start]
-x = 2.0
-y = 1.0
+x = 2
+y = 1
 
 [[platforms]]
 x = 0
