@@ -19,3 +19,4 @@ deadzone = 16.0
 
 [debug]
 draw_grid = true
+draw_bounds = true

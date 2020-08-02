@@ -51,13 +51,6 @@ impl GameState {
         {
             acceleration.apply_gravity(&gravity.0);
 
-            for (_id, (BoundingBox(bbox))) in self
-                .world
-                .query::<&BoundingBox>()
-                .iter()
-                .filter(|(_, (BoundingBox(bbox)))| bbox.contains(position.0))
-            {}
-
             if position.is_grounded() {
                 let mut friction = velocity.0.clone();
                 friction *= -1.0;
@@ -88,6 +81,15 @@ impl GameState {
             let half_size = size.0 / 2.0;
             let max_x = WORLD_WIDTH - half_size;
             let min_x = half_size;
+
+            for (id, (BoundingBox(bbox))) in self
+                .world
+                .query::<&BoundingBox>()
+                .iter()
+                .filter(|(_, (BoundingBox(bbox)))| bbox.contains(position.0))
+            {
+                dbg!(id);
+            }
 
             // stop
             if position.0.x >= max_x {

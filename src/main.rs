@@ -1,5 +1,20 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[macro_use]
+extern crate serde_derive;
+
+use std::env;
+use std::path;
+
+use ggez::conf::{WindowMode, WindowSetup};
+use ggez::event::{KeyCode, KeyMods};
+use ggez::graphics::{Color, DrawMode, Mesh, MeshBuilder, StrokeOptions};
+use ggez::*;
+use itertools::Itertools;
+
+use common::*;
+use components::*;
+
 mod camera;
 mod common;
 mod components;
@@ -7,21 +22,6 @@ mod config;
 mod controls;
 mod game_state;
 mod physics;
-
-#[macro_use]
-extern crate serde_derive;
-
-use ggez::conf::{WindowMode, WindowSetup};
-use ggez::event::{KeyCode, KeyMods};
-use ggez::graphics::Mesh;
-use ggez::*;
-use itertools::Itertools;
-
-use std::env;
-use std::path;
-
-use common::*;
-use components::*;
 
 impl ggez::event::EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
@@ -49,6 +49,45 @@ impl ggez::event::EventHandler for GameState {
         // sort by z-order, descending
         {
             graphics::draw(ctx, &*mesh, (relative_point(self.camera.center, pos.0),))?;
+        }
+
+        for (_id, (pos, BoundingBox(bbox))) in &mut self.world.query::<(&Position, &BoundingBox)>()
+        {
+            let mut mb = MeshBuilder::new();
+            mb.line(
+                &[
+                    Point2::new(bbox.x, bbox.y),
+                    Point2::new(bbox.x + bbox.w, bbox.y),
+                ],
+                1.0,
+                Color::from_rgb(255, 0, 0),
+            )?;
+            mb.line(
+                &[
+                    Point2::new(bbox.x, bbox.y - bbox.h),
+                    Point2::new(bbox.x + bbox.w, bbox.y - bbox.h),
+                ],
+                1.0,
+                Color::from_rgb(255, 0, 0),
+            )?;
+            mb.line(
+                &[
+                    Point2::new(bbox.x, bbox.y),
+                    Point2::new(bbox.x, bbox.y - bbox.h),
+                ],
+                1.0,
+                Color::from_rgb(255, 0, 0),
+            )?;
+            mb.line(
+                &[
+                    Point2::new(bbox.x + bbox.w, bbox.y),
+                    Point2::new(bbox.x + bbox.w, bbox.y - bbox.h),
+                ],
+                1.0,
+                Color::from_rgb(255, 0, 0),
+            )?;
+            let mesh = mb.build(ctx)?;
+            graphics::draw(ctx, &mesh, (relative_point(self.camera.center, pos.0),))?;
         }
 
         if self.tick % 50 == 0 {
