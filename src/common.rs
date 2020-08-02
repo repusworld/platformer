@@ -1,5 +1,5 @@
 pub use ggez::nalgebra;
-pub use ggez::Context;
+pub use ggez::{Context, GameResult};
 pub use hecs::*;
 
 pub type Point2 = nalgebra::Point2<f32>;
@@ -9,14 +9,10 @@ use std::ops::{Add, Div, Mul, Sub};
 
 pub use crate::game_state::*;
 
-pub const WORLD_WIDTH: f32 = 10_000.0;
-pub const WORLD_HEIGHT: f32 = 10_000.0;
 pub const WIDTH: f32 = 1280.0;
 pub const MIDDLE_X: f32 = WIDTH / 2.0;
 pub const HEIGHT: f32 = 720.0;
 pub const MIDDLE_Y: f32 = HEIGHT / 2.0;
-pub const FLOOR: f32 = ((WORLD_HEIGHT / GRID_SIZE) as i32 as f32 * GRID_SIZE) - (GRID_SIZE * 2.0);
-pub const GRID_SIZE: f32 = 32.0;
 pub const GRID_THICKNESS: f32 = 1.0;
 pub const DESIRED_FPS: u32 = 60;
 

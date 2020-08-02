@@ -49,8 +49,6 @@ impl Position {
     }
 }
 
-pub struct Size(pub f32);
-
 #[derive(Default)]
 pub struct Player;
 

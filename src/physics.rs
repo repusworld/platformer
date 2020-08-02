@@ -1,3 +1,5 @@
+use ggez::GameResult;
+
 use crate::common::*;
 use crate::components::*;
 
@@ -38,7 +40,7 @@ pub fn apply_gravity(v: &mut Vector2, force: &Vector2) {
 
 impl GameState {
     #[inline(always)]
-    pub fn apply_physics(&mut self, _ctx: &mut Context) {
+    pub fn apply_physics(&mut self, _ctx: &mut Context) -> GameResult<()> {
         for (_id, (acceleration, velocity, mass, grounded)) in
             &mut self
                 .world
@@ -53,14 +55,10 @@ impl GameState {
             }
         }
 
-        for (_id, (acceleration, velocity, position, &BoundingBox(bbox), gravity)) in
-            &mut self.world.query::<(
-                &mut Acceleration,
-                &mut Velocity,
-                &mut Position,
-                &BoundingBox,
-                &Gravity,
-            )>()
+        for (_id, (acceleration, velocity, position, gravity)) in
+            &mut self
+                .world
+                .query::<(&mut Acceleration, &mut Velocity, &mut Position, &Gravity)>()
         {
             acceleration.apply_gravity(&gravity.0);
 
@@ -68,6 +66,7 @@ impl GameState {
             velocity.0 += acceleration.0;
 
             acceleration.0 *= 0.0;
+
             // limit velocity
             velocity.0.x = limit(velocity.0.x, self.config.physics.max_horizontal_velocity);
             velocity.0.y = limit(velocity.0.y, self.config.physics.max_vertical_velocity);
@@ -83,19 +82,21 @@ impl GameState {
             // apply velocity
             position.0 += velocity.0;
         }
+
+        Ok(())
     }
 
     #[inline(always)]
-    pub fn collision_detection(&mut self, _ctx: &mut Context) {
+    pub fn collision_detection(&mut self, ctx: &mut Context) -> GameResult<()> {
         let mut grounded_entities = vec![];
-        for (id, (velocity, position, &BoundingBox(bbox), size)) in
+        for (id, (velocity, position, &BoundingBox(bbox))) in
             &mut self
                 .world
-                .query::<(&mut Velocity, &mut Position, &BoundingBox, &Size)>()
+                .query::<(&mut Velocity, &mut Position, &BoundingBox)>()
         {
             let mut bbox = bbox.clone();
             bbox.translate(Vector2::new(position.0.x, position.0.y));
-            for (_other, (BoundingBox(other))) in self
+            for (_other, BoundingBox(other)) in self
                 .world
                 .query::<&BoundingBox>()
                 .iter()
@@ -109,8 +110,8 @@ impl GameState {
                 }
             }
 
-            let half_size = size.0 / 2.0;
-            let max_x = WORLD_WIDTH - half_size;
+            let half_size = bbox.w / 2.0;
+            let max_x = self.level_size.width - half_size;
             let min_x = half_size;
 
             // stop
@@ -122,28 +123,28 @@ impl GameState {
                 velocity.0.x = 0.0;
             }
 
-            let max_y = WORLD_HEIGHT - half_size;
+            let half_size = bbox.h / 2.0;
+            let max_y = self.level_size.height - half_size;
             let min_y = half_size;
 
-            // if position.0.y >= FLOOR {
-            //     position.0.y = FLOOR;
-            //     velocity.0.y = 0.0;
-            // } else
             if position.0.y >= max_y {
                 position.0.y = max_y;
                 velocity.0.y = 0.0;
+                ggez::event::quit(ctx);
             } else if position.0.y <= min_y {
                 position.0.y = min_y;
                 velocity.0.y = 0.0;
             }
         }
 
-        for (_id, (grounded)) in &mut self.world.query::<(&mut Grounded)>() {
-            grounded.0 = false;
+        for (id, grounded) in &mut self.world.query::<&mut Grounded>() {
+            grounded.0 = grounded_entities.contains(&id);
         }
 
         for id in grounded_entities {
-            self.world.insert_one(id, Grounded(true));
+            let _ = self.world.insert_one(id, Grounded(true));
         }
+
+        Ok(())
     }
 }

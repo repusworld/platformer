@@ -6,19 +6,25 @@ use crate::physics::*;
 
 impl GameState {
     #[inline(always)]
-    pub fn do_movement(&mut self, _ctx: &mut Context) {
-        for (_id, (acceleration, gravity, velocity, pos, mass, grounded, _)) in
-            &mut self.world.query::<(
-                &mut Acceleration,
-                &mut Gravity,
-                &Velocity,
-                &Position,
-                &Mass,
-                &Grounded,
-                &Player,
-            )>()
+    pub fn do_movement(&mut self, _ctx: &mut Context) -> GameResult<()> {
+        for (id, (acceleration, gravity, velocity, mass, _)) in
+            &mut self
+                .world
+                .query::<(&mut Acceleration, &mut Gravity, &Velocity, &Mass, &Player)>()
         {
-            if grounded.0 || self.config.player.allow_air_control {
+            if self.controls.debug_pressed {
+                self.config.debug.draw_bounds = !self.config.debug.draw_bounds;
+                self.config.debug.draw_grid = !self.config.debug.draw_grid;
+            }
+
+            let grounded = self
+                .world
+                .query::<&Grounded>()
+                .iter()
+                .filter(|(other, _)| id == *other)
+                .any(|(_, grounded)| grounded.0);
+
+            if grounded || self.config.player.allow_air_control {
                 if self.controls.left_held {
                     acceleration
                         .apply_force(&Vector2::new(-self.config.player.acceleration, 0.0), mass.0);
@@ -30,31 +36,26 @@ impl GameState {
                 }
             }
 
-            if grounded.0 {
+            if grounded {
                 if self.controls.jump_pressed {
                     let mag = velocity.0.magnitude();
-                    if mag <= f32::EPSILON {
-                        acceleration.apply_force(
-                            &Vector2::new(0.0, -self.config.player.jump_acceleration),
-                            mass.0,
-                        );
-                    } else {
-                        acceleration.apply_force(
-                            &Vector2::new(
-                                0.0,
-                                -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
-                            ),
-                            mass.0,
-                        );
-                    }
+                    acceleration.apply_force(
+                        &Vector2::new(
+                            0.0,
+                            -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
+                        ),
+                        mass.0,
+                    );
                 }
             }
+
             if self.controls.jump_held {
                 gravity.0.y = self.config.physics.gravity * self.config.player.float_modifier;
             } else {
                 gravity.0.y = self.config.physics.gravity;
             }
         }
+        Ok(())
     }
 
     #[inline(always)]
@@ -87,6 +88,10 @@ impl GameState {
                 self.controls.jump_pressed = !repeat;
                 self.controls.jump_held = true;
             }
+            KeyCode::F12 => {
+                self.controls.debug_pressed = !repeat;
+                self.controls.debug_held = true;
+            }
             _ => (),
         }
     }
@@ -114,6 +119,10 @@ impl GameState {
                 self.controls.jump_pressed = false;
                 self.controls.jump_held = false;
             }
+            KeyCode::F12 => {
+                self.controls.debug_pressed = false;
+                self.controls.debug_held = false;
+            }
             _ => (),
         }
     }
@@ -125,5 +134,6 @@ impl GameState {
         self.controls.up_pressed = false;
         self.controls.down_pressed = false;
         self.controls.jump_pressed = false;
+        self.controls.debug_pressed = false;
     }
 }

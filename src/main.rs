@@ -8,7 +8,7 @@ use std::path;
 
 use ggez::conf::{WindowMode, WindowSetup};
 use ggez::event::{KeyCode, KeyMods};
-use ggez::graphics::{Color, DrawMode, Mesh, MeshBuilder, StrokeOptions};
+use ggez::graphics::{Color, Mesh, MeshBuilder};
 use ggez::*;
 use itertools::Itertools;
 
@@ -21,6 +21,7 @@ mod components;
 mod config;
 mod controls;
 mod game_state;
+mod level;
 mod physics;
 
 impl ggez::event::EventHandler for GameState {
@@ -28,11 +29,10 @@ impl ggez::event::EventHandler for GameState {
         while timer::check_update_time(ctx, DESIRED_FPS) {
             self.tick += 1;
 
-            self.do_movement(ctx);
-            self.apply_physics(ctx);
-            self.move_camera(ctx);
-            self.collision_detection(ctx);
-
+            self.do_movement(ctx)?;
+            self.apply_physics(ctx)?;
+            self.move_camera(ctx)?;
+            self.collision_detection(ctx)?;
             self.reset_pressed_state();
         }
 
