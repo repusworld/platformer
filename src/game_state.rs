@@ -74,12 +74,15 @@ impl GameState {
             Velocity::new(0.0, 0.0),
             Mass(config.player.mass),
             Gravity(Vector2::new(0.0, config.physics.gravity)),
-            graphics::Mesh::new_circle(
+            graphics::Mesh::new_rectangle(
                 ctx,
                 graphics::DrawMode::fill(),
-                Point2::new(0.0, -(config.player.size / 2.0)),
-                config.player.size / 2.0,
-                0.1,
+                Rect::new(
+                    -(config.player.size / 2.0),
+                    -config.player.size,
+                    config.player.size,
+                    config.player.size,
+                ),
                 Color::from_rgb(0, 0, 255),
             )?,
             ZOrder(0),
@@ -97,7 +100,6 @@ impl GameState {
             let width = platform.width * config.player.size;
             let height = platform.height * config.player.size;
             world.spawn((
-                Position::new(x, y),
                 graphics::Mesh::new_rectangle(
                     ctx,
                     DrawMode::fill(),

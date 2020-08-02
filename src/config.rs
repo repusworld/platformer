@@ -14,7 +14,7 @@ impl Default for PlayerConfig {
             acceleration: 1.0,
             jump_acceleration: 70.0,
             mass: 10.0,
-            size: 50.0,
+            size: 32.0,
             float_modifier: 0.5,
             allow_air_control: false,
         }

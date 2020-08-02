@@ -42,6 +42,23 @@ impl ggez::event::EventHandler for GameState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [1.0, 1.0, 1.0, 1.0].into());
 
+        for (_id, (BoundingBox(bbox), mesh, _z_order)) in &mut self
+            .world
+            .query::<(&BoundingBox, &Mesh, &ZOrder)>()
+            .iter()
+            .sorted_by_key(|(_id, (_pos, _mesh, z_order))| -z_order.0)
+        // sort by z-order, descending
+        {
+            graphics::draw(
+                ctx,
+                &*mesh,
+                (relative_point(
+                    self.camera.center,
+                    Point2::new(bbox.x, bbox.y),
+                ),),
+            )?;
+        }
+
         for (_id, (pos, mesh, _z_order)) in &mut self
             .world
             .query::<(&Position, &Mesh, &ZOrder)>()
@@ -53,12 +70,84 @@ impl ggez::event::EventHandler for GameState {
         }
 
         if self.config.debug.draw_bounds {
+            let mut mb = MeshBuilder::new();
             for (_id, (pos, BoundingBox(bbox))) in
                 &mut self.world.query::<(&Position, &BoundingBox)>()
             {
-                const BBOX_WIDTH: f32 = 1.0;
+                const BBOX_WIDTH: f32 = 2.0;
                 const HALF_BBOX_WIDTH: f32 = BBOX_WIDTH / 2.0;
-                let mut mb = MeshBuilder::new();
+                mb.line(
+                    &[
+                        Point2::new(
+                            pos.0.x + bbox.x + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + HALF_BBOX_WIDTH,
+                        ),
+                        Point2::new(
+                            pos.0.x + bbox.x + bbox.w - HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + HALF_BBOX_WIDTH,
+                        ),
+                    ],
+                    BBOX_WIDTH,
+                    Color::from_rgb(255, 0, 0),
+                )?;
+                mb.line(
+                    &[
+                        Point2::new(
+                            pos.0.x + bbox.x + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                        ),
+                        Point2::new(
+                            pos.0.x + bbox.x + HALF_BBOX_WIDTH + bbox.w,
+                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                        ),
+                    ],
+                    BBOX_WIDTH,
+                    Color::from_rgb(255, 0, 0),
+                )?;
+                mb.line(
+                    &[
+                        Point2::new(
+                            pos.0.x + bbox.x + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + HALF_BBOX_WIDTH,
+                        ),
+                        Point2::new(
+                            pos.0.x + bbox.x + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                        ),
+                    ],
+                    BBOX_WIDTH,
+                    Color::from_rgb(255, 0, 0),
+                )?;
+                mb.line(
+                    &[
+                        Point2::new(
+                            pos.0.x + bbox.x + bbox.w - HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + HALF_BBOX_WIDTH,
+                        ),
+                        Point2::new(
+                            pos.0.x + bbox.x + bbox.w - HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                        ),
+                    ],
+                    BBOX_WIDTH,
+                    Color::from_rgb(255, 0, 0),
+                )?;
+            }
+            let mesh = mb.build(ctx)?;
+            graphics::draw(
+                ctx,
+                &mesh,
+                (relative_point(self.camera.center, Point2::new(0.0, 0.0)),),
+            )?;
+        }
+
+        if self.config.debug.draw_bounds {
+            let mut mb = MeshBuilder::new();
+            for (_id, BoundingBox(bbox)) in
+                &mut self.world.query::<(Without<Position, &BoundingBox>)>()
+            {
+                const BBOX_WIDTH: f32 = 2.0;
+                const HALF_BBOX_WIDTH: f32 = BBOX_WIDTH / 2.0;
                 mb.line(
                     &[
                         Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + HALF_BBOX_WIDTH),
@@ -97,9 +186,13 @@ impl ggez::event::EventHandler for GameState {
                     BBOX_WIDTH,
                     Color::from_rgb(255, 0, 0),
                 )?;
-                let mesh = mb.build(ctx)?;
-                graphics::draw(ctx, &mesh, (relative_point(self.camera.center, pos.0),))?;
             }
+            let mesh = mb.build(ctx)?;
+            graphics::draw(
+                ctx,
+                &mesh,
+                (relative_point(self.camera.center, Point2::new(0.0, 0.0)),),
+            )?;
         }
 
         if self.tick % 50 == 0 {
