@@ -144,7 +144,7 @@ impl ggez::event::EventHandler for GameState {
         if self.config.debug.draw_bounds {
             let mut mb = MeshBuilder::new();
             for (_id, BoundingBox(bbox)) in
-                &mut self.world.query::<(Without<Position, &BoundingBox>)>()
+                &mut self.world.query::<Without<Position, &BoundingBox>>()
             {
                 const BBOX_WIDTH: f32 = 2.0;
                 const HALF_BBOX_WIDTH: f32 = BBOX_WIDTH / 2.0;
