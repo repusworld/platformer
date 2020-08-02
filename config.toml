@@ -16,3 +16,6 @@ movement_deadzone = 0.0001
 
 [camera]
 deadzone = 16.0
+
+[debug]
+draw_grid = true

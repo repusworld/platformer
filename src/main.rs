@@ -93,6 +93,17 @@ impl Default for CameraConfig {
 }
 
 #[derive(Deserialize, Debug)]
+struct DebugConfig {
+    draw_grid: bool,
+}
+
+impl Default for DebugConfig {
+    fn default() -> Self {
+        DebugConfig { draw_grid: false }
+    }
+}
+
+#[derive(Deserialize, Debug)]
 struct PhysicsConfig {
     max_horizontal_velocity: f32,
     max_vertical_velocity: f32,
@@ -120,6 +131,7 @@ struct Config {
     player: PlayerConfig,
     camera: CameraConfig,
     physics: PhysicsConfig,
+    debug: DebugConfig,
 }
 
 #[derive(Debug, PartialEq)]
@@ -225,15 +237,14 @@ struct GameState {
 
 impl GameState {
     fn new(ctx: &mut Context) -> ggez::GameResult<GameState> {
-        let start_x = WIDTH / 2.0;
-        let start_y = WORLD_HEIGHT - 300.0;
-
-        let mut world = World::new();
-
         let config: Config = std::fs::read_to_string("config.toml")
             .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
             .unwrap_or_default();
 
+        let mut world = World::new();
+
+        let start_x = WIDTH / 2.0;
+        let start_y = WORLD_HEIGHT - 300.0;
         world.spawn((
             Player,
             Position::new(start_x, start_y),
@@ -281,21 +292,23 @@ impl GameState {
             graphics::BLACK,
         )?;
 
-        for i in 0..(WORLD_WIDTH / GRID_SIZE) as i32 + 1 {
-            let start = i as f32 * GRID_SIZE;
-            mb.line(
-                &[Point2::new(start, 0.0), Point2::new(start, WORLD_HEIGHT)],
-                GRID_THICKNESS,
-                graphics::BLACK,
-            )?;
-        }
-        for i in 0..(WORLD_HEIGHT / GRID_SIZE) as i32 + 1 {
-            let start = i as f32 * GRID_SIZE;
-            mb.line(
-                &[Point2::new(0.0, start), Point2::new(WORLD_WIDTH, start)],
-                GRID_THICKNESS,
-                graphics::BLACK,
-            )?;
+        if config.debug.draw_grid {
+            for i in 0..(WORLD_WIDTH / GRID_SIZE) as i32 + 1 {
+                let start = i as f32 * GRID_SIZE;
+                mb.line(
+                    &[Point2::new(start, 0.0), Point2::new(start, WORLD_HEIGHT)],
+                    GRID_THICKNESS,
+                    graphics::BLACK,
+                )?;
+            }
+            for i in 0..(WORLD_HEIGHT / GRID_SIZE) as i32 + 1 {
+                let start = i as f32 * GRID_SIZE;
+                mb.line(
+                    &[Point2::new(0.0, start), Point2::new(WORLD_WIDTH, start)],
+                    GRID_THICKNESS,
+                    graphics::BLACK,
+                )?;
+            }
         }
         world.spawn((Position::new(0.0, 0.0), mb.build(ctx)?, ZOrder(30)));
 
