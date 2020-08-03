@@ -61,12 +61,14 @@ pub struct GameState {
 
 impl GameState {
     pub fn new(ctx: &mut Context) -> ggez::GameResult<GameState> {
-        let config: Config = std::fs::read_to_string("config.toml")
-            .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
-            .unwrap_or_default();
+        let config: Config = toml::from_str(
+            &std::fs::read_to_string("resources/config.toml")
+                .unwrap_or_else(|_| include_str!("../resources/config.toml").to_string()),
+        )
+        .unwrap_or_default();
 
         let current_level = "start".to_string();
-        let mut levels = std::path::Path::new("levels")
+        let mut levels = std::path::Path::new("resources/levels")
             .read_dir()
             .map(|d| {
                 d.flatten()
@@ -79,7 +81,16 @@ impl GameState {
                     })
                     .map(|mut f| {
                         let level = std::fs::read_to_string(&f)
-                            .map(|data| toml::from_str::<Level>(&data).ok())
+                            .map(|data| match toml::from_str::<Level>(&data) {
+                                Ok(level) => Some(level),
+                                _ => {
+                                    println!(
+                                        "failed to parse level file: {:?}",
+                                        f.clone().into_os_string()
+                                    );
+                                    None
+                                }
+                            })
                             .ok()
                             .flatten();
                         f.set_extension("");
