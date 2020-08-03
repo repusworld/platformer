@@ -1,9 +1,9 @@
-pub use ggez::nalgebra;
+pub use ggez::nalgebra as na;
 pub use ggez::{Context, GameResult};
 pub use hecs::*;
 
-pub type Point2 = nalgebra::Point2<f32>;
-pub type Vector2 = nalgebra::Vector2<f32>;
+pub type Point2 = na::Point2<f32>;
+pub type Vector2 = na::Vector2<f32>;
 
 use std::ops::{Add, Div, Mul, Sub};
 
