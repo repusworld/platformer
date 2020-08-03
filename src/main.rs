@@ -20,6 +20,8 @@ mod common;
 mod components;
 mod config;
 mod controls;
+#[path = "../generated/default_levels.rs"]
+mod default_levels;
 mod game_state;
 mod level;
 mod physics;

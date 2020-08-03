@@ -6,6 +6,7 @@ use maplit::hashmap;
 use crate::common::*;
 use crate::components::*;
 use crate::config::*;
+use crate::default_levels::add_default_levels;
 use crate::level::*;
 
 #[derive(Debug, PartialEq)]
@@ -79,6 +80,10 @@ impl GameState {
                             None
                         }
                     })
+                    .filter(|p| match p.extension() {
+                        Some(s) => s.to_string_lossy().to_string() == "toml",
+                        _ => false,
+                    })
                     .map(|mut f| {
                         let level = std::fs::read_to_string(&f)
                             .map(|data| match toml::from_str::<Level>(&data) {
@@ -107,11 +112,13 @@ impl GameState {
                     .collect::<HashMap<_, _>>()
             })
             .unwrap_or_else(|_| {
-                hashmap! {"start".to_string() => Level::default()}
+                hashmap! {}
             });
 
         if levels.is_empty() {
-            levels.insert("start".to_string(), Level::default());
+            if !add_default_levels(&mut levels) {
+                levels.insert("start".to_string(), Level::default());
+            }
         }
 
         for (_, mut v) in &mut levels {
