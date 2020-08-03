@@ -6,25 +6,25 @@ height = 10_000
 x = 2
 y = 2
 
-[[platforms]]
+[[platform]]
 x = 0
 y = 2
 width = 4
 height = 1
 
-[[platforms]]
+[[trap]]
 x = 4
 y = 3
 width = 4
 height = 1
 
-[[platforms]]
+[[platform]]
 x = 6
 y = 8
 width = 4
 height = 1
 
-[[platforms]]
+[[platform]]
 x = 12
 y = 14
 width = 4

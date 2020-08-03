@@ -111,6 +111,24 @@ impl GameState {
             ));
         }
 
+        for trap in level.traps {
+            let x = trap.x * config.player.size;
+            let y = level.size.height - (trap.y * config.player.size);
+            let width = (trap.width * config.player.size) + 1.0;
+            let height = (trap.height * config.player.size) + 1.0;
+            world.spawn((
+                graphics::Mesh::new_rectangle(
+                    ctx,
+                    DrawMode::fill(),
+                    Rect::new(0.0, 0.0, width, height),
+                    Color::from_rgb(255, 0, 0),
+                )?,
+                ZOrder(20),
+                BoundingBox(Rect::new(x, y, width, height)),
+                Death,
+            ));
+        }
+
         if config.debug.draw_grid {
             let mut mb = graphics::MeshBuilder::new();
             for i in 0..(level.size.width / config.player.size) as i32 + 1 {

@@ -22,7 +22,10 @@ pub struct LevelSize {
 pub struct Level {
     pub size: LevelSize,
     pub start: Start,
+    #[serde(rename = "platform")]
     pub platforms: Vec<Platform>,
+    #[serde(rename = "trap")]
+    pub traps: Vec<Platform>,
 }
 
 impl Default for Level {
@@ -53,6 +56,12 @@ impl Default for Level {
                     height: 1.0,
                 },
             ],
+            traps: vec![Platform {
+                x: 4.0,
+                y: 3.0,
+                width: 4.0,
+                height: 1.0,
+            }],
         }
     }
 }

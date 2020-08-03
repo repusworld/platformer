@@ -97,13 +97,18 @@ impl GameState {
             let mut bbox = bbox.clone();
             bbox.translate(Vector2::new(position.0.x, position.0.y));
 
-            for (_other, BoundingBox(other_bbox)) in self
+            for (other, BoundingBox(other_bbox)) in self
                 .world
                 .query::<&BoundingBox>()
                 .iter()
                 .filter(|(other, _)| id != *other)
                 .filter(|(_, BoundingBox(other))| other.overlaps(&bbox))
             {
+                if let Ok(mut q) = self.world.query_one::<&Death>(other) {
+                    if q.get().is_some() {
+                        ggez::event::quit(ctx);
+                    }
+                }
                 let bbox_left = bbox.left();
                 let bbox_right = bbox.right();
                 let bbox_top = bbox.top();
