@@ -1,3 +1,5 @@
+/* AUTO GENERATED - DO NOT TOUCH */
+
 use std::collections::HashMap;
 use crate::level::Level;
 pub fn add_default_levels(levels: &mut HashMap<String, Level>) -> bool {

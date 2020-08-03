@@ -18,6 +18,8 @@ fn main() {
             });
 
         let mut v = vec![
+            "/* AUTO GENERATED - DO NOT TOUCH */".to_string(),
+            "".to_string(),
             "use std::collections::HashMap;".to_string(),
             "use crate::level::Level;".to_string(),
             "pub fn add_default_levels(levels: &mut HashMap<String, Level>) -> bool {".to_string(),
