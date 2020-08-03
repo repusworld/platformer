@@ -138,47 +138,50 @@ impl GameState {
                 } else if tr && br {
                     velocity.0.x = 0.0;
                     position.0.x = other_bbox.left() - (self.config.player.size / 2.0);
-                } else if bl {
-                    let distance_y = bbox_bottom - other_bbox.top();
-                    let distance_x = bbox_left - other_bbox.right();
-                    if distance_y.abs() <= distance_x.abs() {
-                        velocity.0.y = 0.0;
-                        position.0.y = other_bbox.top();
-                        grounded_entities.push(id);
-                    } else {
-                        velocity.0.x = 0.0;
-                        position.0.x = other_bbox.right() + (self.config.player.size / 2.0);
-                    }
-                } else if br {
-                    let distance_y = bbox_bottom - other_bbox.top();
-                    let distance_x = bbox_right - other_bbox.left();
-                    if distance_y.abs() <= distance_x.abs() {
-                        velocity.0.y = 0.0;
-                        position.0.y = other_bbox.top();
-                        grounded_entities.push(id);
-                    } else {
-                        velocity.0.x = 0.0;
-                        position.0.x = other_bbox.left() - (self.config.player.size / 2.0);
-                    }
-                } else if tl {
-                    let distance_y = bbox_top - other_bbox.bottom();
-                    let distance_x = bbox_left - other_bbox.right();
-                    if distance_y.abs() <= distance_x.abs() {
-                        velocity.0.y /= 2.0;
-                        position.0.y = other_bbox.bottom() + self.config.player.size;
-                    } else {
-                        velocity.0.x = 0.0;
-                        position.0.x = other_bbox.right() + (self.config.player.size / 2.0);
-                    }
-                } else if tr {
-                    let distance_y = bbox_top - other_bbox.bottom();
-                    let distance_x = bbox_right - other_bbox.left();
-                    if distance_y.abs() <= distance_x.abs() {
-                        velocity.0.y /= 2.0;
-                        position.0.y = other_bbox.bottom() + self.config.player.size;
-                    } else {
-                        velocity.0.x = 0.0;
-                        position.0.x = other_bbox.left() - (self.config.player.size / 2.0);
+                } else {
+                    // TODO: simplify this mess
+                    if bl {
+                        let distance_y = bbox_bottom - other_bbox.top();
+                        let distance_x = bbox_left - other_bbox.right();
+                        if distance_y.abs() <= distance_x.abs() {
+                            velocity.0.y = 0.0;
+                            position.0.y = other_bbox.top();
+                            grounded_entities.push(id);
+                        } else {
+                            velocity.0.x = 0.0;
+                            position.0.x = other_bbox.right() + (self.config.player.size / 2.0);
+                        }
+                    } else if br {
+                        let distance_y = bbox_bottom - other_bbox.top();
+                        let distance_x = bbox_right - other_bbox.left();
+                        if distance_y.abs() <= distance_x.abs() {
+                            velocity.0.y = 0.0;
+                            position.0.y = other_bbox.top();
+                            grounded_entities.push(id);
+                        } else {
+                            velocity.0.x = 0.0;
+                            position.0.x = other_bbox.left() - (self.config.player.size / 2.0);
+                        }
+                    } else if tl {
+                        let distance_y = bbox_top - other_bbox.bottom();
+                        let distance_x = bbox_left - other_bbox.right();
+                        if distance_y.abs() <= distance_x.abs() {
+                            velocity.0.y /= 2.0;
+                            position.0.y = other_bbox.bottom() + self.config.player.size;
+                        } else {
+                            velocity.0.x = 0.0;
+                            position.0.x = other_bbox.right() + (self.config.player.size / 2.0);
+                        }
+                    } else if tr {
+                        let distance_y = bbox_top - other_bbox.bottom();
+                        let distance_x = bbox_right - other_bbox.left();
+                        if distance_y.abs() <= distance_x.abs() {
+                            velocity.0.y /= 2.0;
+                            position.0.y = other_bbox.bottom() + self.config.player.size;
+                        } else {
+                            velocity.0.x = 0.0;
+                            position.0.x = other_bbox.left() - (self.config.player.size / 2.0);
+                        }
                     }
                 }
             }
