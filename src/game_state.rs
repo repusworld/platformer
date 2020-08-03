@@ -65,8 +65,8 @@ impl GameState {
 
         let mut world = World::new();
 
-        let start_x = level.start.x;
-        let start_y = level.size.height - level.start.y;
+        let start_x = level.start.x * config.player.size;
+        let start_y = level.size.height - (level.start.y * config.player.size);
         world.spawn((
             Player,
             Position::new(start_x, start_y),
