@@ -58,7 +58,7 @@ impl Default for Level {
             ],
             traps: vec![Platform {
                 x: 4.0,
-                y: 3.0,
+                y: 6.0,
                 width: 4.0,
                 height: 1.0,
             }],
