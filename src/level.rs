@@ -120,6 +120,24 @@ impl GameState {
             ));
         }
 
+        for text in &self.levels[&self.current_level].texts {
+            let x = text.x * self.config.player.size;
+            let y =
+                self.levels[&self.current_level].size.height - (text.y * self.config.player.size);
+            // let width = (text.width * self.config.player.size) + 1.0;
+            // let height = (text.height * self.config.player.size) + 1.0;
+
+            self.world.spawn((
+                Position::new(x, y),
+                TextContainer {
+                    value: text.value.clone(),
+                    size: text.size,
+                },
+                Color::from_rgb(text.color.red, text.color.green, text.color.blue),
+                LevelId(current_level_atom.clone()),
+            ));
+        }
+
         Ok(())
     }
 }
@@ -130,6 +148,33 @@ pub struct Platform {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TextColor {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+}
+
+impl Default for TextColor {
+    fn default() -> Self {
+        TextColor {
+            red: 0,
+            green: 0,
+            blue: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LevelText {
+    pub x: f32,
+    pub y: f32,
+    pub value: String,
+    pub size: f32,
+    #[serde(default)]
+    pub color: TextColor,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -165,6 +210,9 @@ pub struct Level {
     #[serde(rename = "teleporter")]
     #[serde(default)]
     pub teleporters: Vec<Teleporter>,
+    #[serde(rename = "text")]
+    #[serde(default)]
+    pub texts: Vec<LevelText>,
 }
 
 impl Default for Level {
@@ -202,6 +250,7 @@ impl Default for Level {
                 height: 1.0,
             }],
             teleporters: vec![],
+            texts: vec![],
         }
     }
 }

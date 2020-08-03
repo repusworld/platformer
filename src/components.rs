@@ -64,3 +64,8 @@ pub struct Death;
 pub struct LevelId(pub DefaultAtom);
 
 pub struct TeleportTo(pub String);
+
+pub struct TextContainer {
+    pub value: String,
+    pub size: f32,
+}

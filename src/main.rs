@@ -8,7 +8,7 @@ use std::path;
 
 use ggez::conf::{WindowMode, WindowSetup};
 use ggez::event::{KeyCode, KeyMods};
-use ggez::graphics::{Color, Mesh, MeshBuilder};
+use ggez::graphics::{Color, Mesh, MeshBuilder, Text};
 use ggez::*;
 use itertools::Itertools;
 
@@ -82,8 +82,23 @@ impl ggez::event::EventHandler for GameState {
             graphics::draw(ctx, &*mesh, (relative_point(self.camera.center, pos.0),))?;
         }
 
+        for (_id, (pos, text, col)) in
+            &mut self.world.query::<(&Position, &TextContainer, &Color)>()
+        {
+            graphics::draw(
+                ctx,
+                &Text::new(
+                    graphics::TextFragment::new(text.value.clone())
+                        .color(*col)
+                        .scale(graphics::Scale::uniform(text.size)),
+                ),
+                (relative_point(self.camera.center, pos.0),),
+            )?;
+        }
+
         if self.config.debug.draw_bounds {
             let mut mb = MeshBuilder::new();
+            // bounds with pos
             for (_id, (pos, BoundingBox(bbox))) in
                 &mut self.world.query::<(&Position, &BoundingBox)>()
             {
@@ -107,11 +122,11 @@ impl ggez::event::EventHandler for GameState {
                     &[
                         Point2::new(
                             pos.0.x + bbox.x + HALF_BBOX_WIDTH,
-                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                         Point2::new(
-                            pos.0.x + bbox.x + HALF_BBOX_WIDTH + bbox.w,
-                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            pos.0.x + bbox.x + bbox.w - HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                     ],
                     BBOX_WIDTH,
@@ -125,7 +140,7 @@ impl ggez::event::EventHandler for GameState {
                         ),
                         Point2::new(
                             pos.0.x + bbox.x + HALF_BBOX_WIDTH,
-                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                     ],
                     BBOX_WIDTH,
@@ -139,23 +154,15 @@ impl ggez::event::EventHandler for GameState {
                         ),
                         Point2::new(
                             pos.0.x + bbox.x + bbox.w - HALF_BBOX_WIDTH,
-                            pos.0.y + bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            pos.0.y + bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                     ],
                     BBOX_WIDTH,
                     Color::from_rgb(255, 0, 0),
                 )?;
             }
-            let mesh = mb.build(ctx)?;
-            graphics::draw(
-                ctx,
-                &mesh,
-                (relative_point(self.camera.center, Point2::new(0.0, 0.0)),),
-            )?;
-        }
 
-        if self.config.debug.draw_bounds {
-            let mut mb = MeshBuilder::new();
+            // bounds without pos
             for (_id, BoundingBox(bbox)) in
                 &mut self.world.query::<Without<Position, &BoundingBox>>()
             {
@@ -171,10 +178,10 @@ impl ggez::event::EventHandler for GameState {
                 )?;
                 mb.line(
                     &[
-                        Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + bbox.h + HALF_BBOX_WIDTH),
+                        Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + bbox.h - HALF_BBOX_WIDTH),
                         Point2::new(
-                            bbox.x + HALF_BBOX_WIDTH + bbox.w,
-                            bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            bbox.x + bbox.w - HALF_BBOX_WIDTH,
+                            bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                     ],
                     BBOX_WIDTH,
@@ -183,7 +190,7 @@ impl ggez::event::EventHandler for GameState {
                 mb.line(
                     &[
                         Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + HALF_BBOX_WIDTH),
-                        Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + bbox.h + HALF_BBOX_WIDTH),
+                        Point2::new(bbox.x + HALF_BBOX_WIDTH, bbox.y + bbox.h - HALF_BBOX_WIDTH),
                     ],
                     BBOX_WIDTH,
                     Color::from_rgb(255, 0, 0),
@@ -193,13 +200,14 @@ impl ggez::event::EventHandler for GameState {
                         Point2::new(bbox.x + bbox.w - HALF_BBOX_WIDTH, bbox.y + HALF_BBOX_WIDTH),
                         Point2::new(
                             bbox.x + bbox.w - HALF_BBOX_WIDTH,
-                            bbox.y + bbox.h + HALF_BBOX_WIDTH,
+                            bbox.y + bbox.h - HALF_BBOX_WIDTH,
                         ),
                     ],
                     BBOX_WIDTH,
                     Color::from_rgb(255, 0, 0),
                 )?;
             }
+
             let mesh = mb.build(ctx)?;
             graphics::draw(
                 ctx,
