@@ -114,7 +114,30 @@ impl GameState {
             levels.insert("start".to_string(), Level::default());
         }
 
-        // println!("{:#?}", levels);
+        for (_, mut v) in &mut levels {
+            v.size.height *= config.player.size;
+            v.size.width *= config.player.size;
+            v.start.x *= config.player.size;
+            v.start.y *= config.player.size;
+            let scale_platform = |p: &mut Platform| {
+                p.x *= config.player.size;
+                p.y *= config.player.size;
+                p.width *= config.player.size;
+                p.height *= config.player.size;
+            };
+            v.platforms.iter_mut().for_each(scale_platform);
+            v.traps.iter_mut().for_each(scale_platform);
+            v.teleporters.iter_mut().for_each(|p| {
+                p.x *= config.player.size;
+                p.y *= config.player.size;
+                p.width *= config.player.size;
+                p.height *= config.player.size;
+            });
+            v.texts.iter_mut().for_each(|t| {
+                t.x *= config.player.size;
+                t.y *= config.player.size;
+            });
+        }
 
         let mut world = World::new();
 

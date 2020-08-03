@@ -28,9 +28,9 @@ impl GameState {
         self.current_level = new_level;
 
         let current_level_atom = DefaultAtom::from(self.current_level.clone());
-        let start_x = self.levels[&self.current_level].start.x * self.config.player.size;
+        let start_x = self.levels[&self.current_level].start.x;
         let start_y = self.levels[&self.current_level].size.height
-            - (self.levels[&self.current_level].start.y * self.config.player.size)
+            - (self.levels[&self.current_level].start.y)
             - 1.0;
         self.world.spawn((
             Player,
@@ -61,11 +61,10 @@ impl GameState {
         ));
 
         for platform in &self.levels[&self.current_level].platforms {
-            let x = platform.x * self.config.player.size;
-            let y = self.levels[&self.current_level].size.height
-                - (platform.y * self.config.player.size);
-            let width = (platform.width * self.config.player.size) + 1.0;
-            let height = (platform.height * self.config.player.size) + 1.0;
+            let x = platform.x;
+            let y = self.levels[&self.current_level].size.height - (platform.y);
+            let width = platform.width + 1.0;
+            let height = platform.height + 1.0;
             self.world.spawn((
                 graphics::Mesh::new_rectangle(
                     ctx,
@@ -80,11 +79,10 @@ impl GameState {
         }
 
         for trap in &self.levels[&self.current_level].traps {
-            let x = trap.x * self.config.player.size;
-            let y =
-                self.levels[&self.current_level].size.height - (trap.y * self.config.player.size);
-            let width = (trap.width * self.config.player.size) + 1.0;
-            let height = (trap.height * self.config.player.size) + 1.0;
+            let x = trap.x;
+            let y = self.levels[&self.current_level].size.height - trap.y;
+            let width = trap.width + 1.0;
+            let height = trap.height + 1.0;
             self.world.spawn((
                 graphics::Mesh::new_rectangle(
                     ctx,
@@ -100,11 +98,10 @@ impl GameState {
         }
 
         for teleporter in &self.levels[&self.current_level].teleporters {
-            let x = teleporter.x * self.config.player.size;
-            let y = self.levels[&self.current_level].size.height
-                - (teleporter.y * self.config.player.size);
-            let width = (teleporter.width * self.config.player.size) + 1.0;
-            let height = (teleporter.height * self.config.player.size) + 1.0;
+            let x = teleporter.x;
+            let y = self.levels[&self.current_level].size.height - teleporter.y;
+            let width = teleporter.width + 1.0;
+            let height = teleporter.height + 1.0;
 
             self.world.spawn((
                 graphics::Mesh::new_rectangle(
@@ -121,11 +118,8 @@ impl GameState {
         }
 
         for text in &self.levels[&self.current_level].texts {
-            let x = text.x * self.config.player.size;
-            let y =
-                self.levels[&self.current_level].size.height - (text.y * self.config.player.size);
-            // let width = (text.width * self.config.player.size) + 1.0;
-            // let height = (text.height * self.config.player.size) + 1.0;
+            let x = text.x;
+            let y = self.levels[&self.current_level].size.height - text.y;
 
             self.world.spawn((
                 Position::new(x, y),
