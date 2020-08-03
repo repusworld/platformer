@@ -4,7 +4,7 @@ size = 32.0
 acceleration = 1.0
 jump_acceleration = 70.0
 float_modifier = 0.5
-allow_air_control = false
+allow_air_control = true
 
 [physics]
 max_horizontal_velocity = 10.0

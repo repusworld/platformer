@@ -97,8 +97,8 @@ impl GameState {
         for platform in level.platforms {
             let x = platform.x * config.player.size;
             let y = level.size.height - (platform.y * config.player.size);
-            let width = platform.width * config.player.size;
-            let height = platform.height * config.player.size;
+            let width = (platform.width * config.player.size) + 1.0;
+            let height = (platform.height * config.player.size) + 1.0;
             world.spawn((
                 graphics::Mesh::new_rectangle(
                     ctx,

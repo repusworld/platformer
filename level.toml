@@ -13,6 +13,12 @@ width = 4
 height = 1
 
 [[platforms]]
+x = 4
+y = 3
+width = 4
+height = 1
+
+[[platforms]]
 x = 6
 y = 8
 width = 4
