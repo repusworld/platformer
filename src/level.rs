@@ -1,4 +1,108 @@
-#[derive(Serialize, Deserialize, Clone)]
+use ggez::graphics;
+use ggez::graphics::{Color, DrawMode, Rect};
+
+use crate::common::*;
+use crate::components::*;
+
+impl GameState {
+    #[inline(always)]
+    pub fn restart_level(&mut self, ctx: &mut Context) -> GameResult<()> {
+        self.change_level(ctx, self.current_level.clone())
+    }
+
+    #[inline(always)]
+    pub fn change_level(&mut self, ctx: &mut Context, new_level: String) -> GameResult<()> {
+        let current_level_atom = DefaultAtom::from(self.current_level.clone());
+        let ids = self
+            .world
+            .query::<&LevelId>()
+            .iter()
+            .filter(|(_, LevelId(level))| *level == current_level_atom)
+            .map(|(id, _)| id)
+            .collect::<Vec<_>>();
+
+        for id in ids {
+            let _ = self.world.despawn(id);
+        }
+
+        self.current_level = new_level;
+
+        let current_level_atom = DefaultAtom::from(self.current_level.clone());
+        let start_x = self.levels[&self.current_level].start.x * self.config.player.size;
+        let start_y = self.levels[&self.current_level].size.height
+            - (self.levels[&self.current_level].start.y * self.config.player.size)
+            - 1.0;
+        self.world.spawn((
+            Player,
+            Position::new(start_x, start_y),
+            Acceleration::new(0.0, 0.0),
+            Velocity::new(0.0, 0.0),
+            Mass(self.config.player.mass),
+            Gravity(Vector2::new(0.0, self.config.physics.gravity)),
+            graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                Rect::new(
+                    -(self.config.player.size / 2.0),
+                    -self.config.player.size,
+                    self.config.player.size,
+                    self.config.player.size,
+                ),
+                Color::from_rgb(0, 0, 255),
+            )?,
+            ZOrder(0),
+            BoundingBox(Rect::new(
+                -(self.config.player.size / 2.0),
+                -self.config.player.size,
+                self.config.player.size,
+                self.config.player.size,
+            )),
+            LevelId(current_level_atom.clone()),
+        ));
+
+        for platform in &self.levels[&self.current_level].platforms {
+            let x = platform.x * self.config.player.size;
+            let y = self.levels[&self.current_level].size.height
+                - (platform.y * self.config.player.size);
+            let width = (platform.width * self.config.player.size) + 1.0;
+            let height = (platform.height * self.config.player.size) + 1.0;
+            self.world.spawn((
+                graphics::Mesh::new_rectangle(
+                    ctx,
+                    DrawMode::fill(),
+                    Rect::new(0.0, 0.0, width, height),
+                    graphics::BLACK,
+                )?,
+                ZOrder(20),
+                BoundingBox(Rect::new(x, y, width, height)),
+                LevelId(current_level_atom.clone()),
+            ));
+        }
+
+        for trap in &self.levels[&self.current_level].traps {
+            let x = trap.x * self.config.player.size;
+            let y =
+                self.levels[&self.current_level].size.height - (trap.y * self.config.player.size);
+            let width = (trap.width * self.config.player.size) + 1.0;
+            let height = (trap.height * self.config.player.size) + 1.0;
+            self.world.spawn((
+                graphics::Mesh::new_rectangle(
+                    ctx,
+                    DrawMode::fill(),
+                    Rect::new(0.0, 0.0, width, height),
+                    Color::from_rgb(255, 0, 0),
+                )?,
+                ZOrder(20),
+                BoundingBox(Rect::new(x, y, width, height)),
+                Death,
+                LevelId(current_level_atom.clone()),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Platform {
     pub x: f32,
     pub y: f32,
@@ -6,19 +110,19 @@ pub struct Platform {
     pub height: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Start {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LevelSize {
     pub width: f32,
     pub height: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Level {
     pub size: LevelSize,
     pub start: Start,

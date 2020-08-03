@@ -1,6 +1,7 @@
 pub use ggez::nalgebra as na;
 pub use ggez::{Context, GameResult};
 pub use hecs::*;
+pub use string_cache::DefaultAtom;
 
 pub type Point2 = na::Point2<f32>;
 pub type Vector2 = na::Vector2<f32>;

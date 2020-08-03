@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use ggez::graphics;
-use ggez::graphics::{DrawMode, Rect};
-use graphics::Color;
+use maplit::hashmap;
 
 use crate::common::*;
 use crate::components::*;
@@ -50,7 +51,8 @@ pub struct GameState {
     pub camera: Camera,
     pub world: World,
     pub controls: Controls,
-    pub level_size: LevelSize,
+    pub current_level: String,
+    pub levels: HashMap<String, Level>,
 }
 
 impl GameState {
@@ -59,95 +61,62 @@ impl GameState {
             .map(|config_string| toml::from_str(&config_string).unwrap_or_default())
             .unwrap_or_default();
 
-        let level: Level =
-            toml::from_str(&std::fs::read_to_string("level.toml").unwrap_or_default())
-                .unwrap_or_default();
+        let current_level = "start".to_string();
+        let mut levels = match std::path::Path::new("levels").read_dir() {
+            Ok(d) => d
+                .flatten()
+                .flat_map(|f| {
+                    if f.metadata().unwrap().is_file() {
+                        Some(f.path())
+                    } else {
+                        None
+                    }
+                })
+                .map(|mut f| {
+                    let level = std::fs::read_to_string(&f)
+                        .map(|data| toml::from_str::<Level>(&data).ok())
+                        .ok()
+                        .flatten();
+                    f.set_extension("");
+                    (
+                        f.file_name()
+                            .expect("File name is not valid utf-8!")
+                            .to_string_lossy()
+                            .to_string(),
+                        level,
+                    )
+                })
+                .filter(|(_, l)| l.is_some())
+                .map(|(f, l)| (f, l.unwrap()))
+                .collect::<HashMap<_, _>>(),
+            _ => hashmap! {"start".to_string() => Level::default()},
+        };
+
+        if levels.is_empty() {
+            levels.insert("start".to_string(), Level::default());
+        }
 
         let mut world = World::new();
 
-        let start_x = level.start.x * config.player.size;
-        let start_y = level.size.height - (level.start.y * config.player.size);
-        world.spawn((
-            Player,
-            Position::new(start_x, start_y),
-            Acceleration::new(0.0, 0.0),
-            Velocity::new(0.0, 0.0),
-            Mass(config.player.mass),
-            Gravity(Vector2::new(0.0, config.physics.gravity)),
-            graphics::Mesh::new_rectangle(
-                ctx,
-                graphics::DrawMode::fill(),
-                Rect::new(
-                    -(config.player.size / 2.0),
-                    -config.player.size,
-                    config.player.size,
-                    config.player.size,
-                ),
-                Color::from_rgb(0, 0, 255),
-            )?,
-            ZOrder(0),
-            BoundingBox(Rect::new(
-                -(config.player.size / 2.0),
-                -config.player.size,
-                config.player.size,
-                config.player.size,
-            )),
-        ));
-
-        for platform in level.platforms {
-            let x = platform.x * config.player.size;
-            let y = level.size.height - (platform.y * config.player.size);
-            let width = (platform.width * config.player.size) + 1.0;
-            let height = (platform.height * config.player.size) + 1.0;
-            world.spawn((
-                graphics::Mesh::new_rectangle(
-                    ctx,
-                    DrawMode::fill(),
-                    Rect::new(0.0, 0.0, width, height),
-                    graphics::BLACK,
-                )?,
-                ZOrder(20),
-                BoundingBox(Rect::new(x, y, width, height)),
-            ));
-        }
-
-        for trap in level.traps {
-            let x = trap.x * config.player.size;
-            let y = level.size.height - (trap.y * config.player.size);
-            let width = (trap.width * config.player.size) + 1.0;
-            let height = (trap.height * config.player.size) + 1.0;
-            world.spawn((
-                graphics::Mesh::new_rectangle(
-                    ctx,
-                    DrawMode::fill(),
-                    Rect::new(0.0, 0.0, width, height),
-                    Color::from_rgb(255, 0, 0),
-                )?,
-                ZOrder(20),
-                BoundingBox(Rect::new(x, y, width, height)),
-                Death,
-            ));
-        }
-
         if config.debug.draw_grid {
             let mut mb = graphics::MeshBuilder::new();
-            for i in 0..(level.size.width / config.player.size) as i32 + 1 {
+            for i in 0..(levels[&current_level].size.width / config.player.size) as i32 + 1 {
                 let start = i as f32 * config.player.size;
                 mb.line(
                     &[
                         Point2::new(start, 0.0),
-                        Point2::new(start, level.size.height),
+                        Point2::new(start, levels[&current_level].size.height),
                     ],
                     GRID_THICKNESS,
                     graphics::BLACK,
                 )?;
             }
-            for i in 0..(level.size.height / config.player.size) as i32 + 1 {
+            for i in 0..(levels[&current_level].size.height / config.player.size) as i32 + 1 {
                 let start = i as f32 * config.player.size;
                 mb.line(
                     &[
                         Point2::new(0.0, start),
-                        Point2::new(level.size.width, start),
+                        Point2::new(levels[&current_level].size.width, start),
                     ],
                     GRID_THICKNESS,
                     graphics::BLACK,
@@ -156,13 +125,18 @@ impl GameState {
             world.spawn((Position::new(0.0, 0.0), mb.build(ctx)?, ZOrder(20)));
         }
 
-        Ok(GameState {
+        let mut game_state = GameState {
             config,
             world,
-            level_size: level.size.clone(),
+            current_level: current_level.clone(),
+            levels,
             camera: Camera::default(),
             controls: Controls::default(),
             tick: 0,
-        })
+        };
+
+        game_state.change_level(ctx, current_level)?;
+
+        Ok(game_state)
     }
 }

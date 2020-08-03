@@ -36,17 +36,15 @@ impl GameState {
                 }
             }
 
-            if grounded {
-                if self.controls.jump_pressed {
-                    let mag = velocity.0.magnitude();
-                    acceleration.apply_force(
-                        &Vector2::new(
-                            0.0,
-                            -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
-                        ),
-                        mass.0,
-                    );
-                }
+            if grounded && self.controls.jump_pressed {
+                let mag = velocity.0.magnitude();
+                acceleration.apply_force(
+                    &Vector2::new(
+                        0.0,
+                        -self.config.player.jump_acceleration * (1.0 + (mag / 30.0)),
+                    ),
+                    mass.0,
+                );
             }
 
             if self.controls.jump_held {

@@ -47,7 +47,7 @@ impl GameState {
                 .query::<(&mut Acceleration, &mut Velocity, &Mass, &Grounded)>()
         {
             if grounded.0 {
-                let mut friction = velocity.0.clone();
+                let mut friction = velocity.0;
                 friction *= -1.0;
                 friction = friction.normalize_safe();
                 friction *= self.config.physics.friction * self.config.physics.normal_force;
@@ -88,13 +88,14 @@ impl GameState {
 
     #[inline(always)]
     pub fn collision_detection(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let mut should_restart = false;
         let mut grounded_entities = vec![];
         for (id, (velocity, position, &BoundingBox(bbox))) in
             &mut self
                 .world
                 .query::<(&mut Velocity, &mut Position, &BoundingBox)>()
         {
-            let mut bbox = bbox.clone();
+            let mut bbox = bbox;
             bbox.translate(Vector2::new(position.0.x, position.0.y));
 
             for (other, BoundingBox(other_bbox)) in self
@@ -106,7 +107,8 @@ impl GameState {
             {
                 if let Ok(mut q) = self.world.query_one::<&Death>(other) {
                     if q.get().is_some() {
-                        ggez::event::quit(ctx);
+                        should_restart = true;
+                        // ggez::event::quit(ctx);
                     }
                 }
                 let bbox_left = bbox.left();
@@ -187,7 +189,7 @@ impl GameState {
             }
 
             let half_size = bbox.w / 2.0;
-            let max_x = self.level_size.width - half_size;
+            let max_x = self.levels[&self.current_level].size.width - half_size;
             let min_x = half_size;
 
             // stop
@@ -200,13 +202,14 @@ impl GameState {
             }
 
             let half_size = bbox.h / 2.0;
-            let max_y = self.level_size.height - half_size;
+            let max_y = self.levels[&self.current_level].size.height - half_size;
             let min_y = half_size;
 
             if position.0.y >= max_y {
                 position.0.y = max_y;
                 velocity.0.y = 0.0;
-                ggez::event::quit(ctx);
+                // ggez::event::quit(ctx);
+                should_restart = true;
             } else if position.0.y <= min_y {
                 position.0.y = min_y;
                 velocity.0.y = 0.0;
@@ -219,6 +222,10 @@ impl GameState {
 
         for id in grounded_entities {
             let _ = self.world.insert_one(id, Grounded(true));
+        }
+
+        if should_restart {
+            self.restart_level(ctx)?;
         }
 
         Ok(())

@@ -60,3 +60,5 @@ pub struct BoundingBox(pub Rect);
 pub struct Grounded(pub bool);
 
 pub struct Death;
+
+pub struct LevelId(pub DefaultAtom);

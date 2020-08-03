@@ -16,13 +16,18 @@ impl GameState {
 
             if self.camera.center.x < WIDTH / 2.0 {
                 self.camera.center.x = WIDTH / 2.0;
-            } else if self.camera.center.x > self.level_size.width - (WIDTH / 2.0) {
-                self.camera.center.x = self.level_size.width - (WIDTH / 2.0)
+            } else if self.camera.center.x
+                > self.levels[&self.current_level].size.width - (WIDTH / 2.0)
+            {
+                self.camera.center.x = self.levels[&self.current_level].size.width - (WIDTH / 2.0)
             }
             if self.camera.center.y < HEIGHT / 2.0 {
                 self.camera.center.y = HEIGHT / 2.0;
-            } else if self.camera.center.y > self.level_size.height - (HEIGHT / 2.0) {
-                self.camera.center.y = self.level_size.height - (HEIGHT / 2.0);
+            } else if self.camera.center.y
+                > self.levels[&self.current_level].size.height - (HEIGHT / 2.0)
+            {
+                self.camera.center.y =
+                    self.levels[&self.current_level].size.height - (HEIGHT / 2.0);
             }
         }
         Ok(())
