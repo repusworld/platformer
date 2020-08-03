@@ -98,6 +98,28 @@ impl GameState {
                 LevelId(current_level_atom.clone()),
             ));
         }
+
+        for teleporter in &self.levels[&self.current_level].teleporters {
+            let x = teleporter.x * self.config.player.size;
+            let y = self.levels[&self.current_level].size.height
+                - (teleporter.y * self.config.player.size);
+            let width = (teleporter.width * self.config.player.size) + 1.0;
+            let height = (teleporter.height * self.config.player.size) + 1.0;
+
+            self.world.spawn((
+                graphics::Mesh::new_rectangle(
+                    ctx,
+                    DrawMode::fill(),
+                    Rect::new(0.0, 0.0, width, height),
+                    Color::from_rgb(0, 255, 0),
+                )?,
+                ZOrder(20),
+                BoundingBox(Rect::new(x, y, width, height)),
+                LevelId(current_level_atom.clone()),
+                TeleportTo(teleporter.target.clone()),
+            ));
+        }
+
         Ok(())
     }
 }
@@ -108,6 +130,15 @@ pub struct Platform {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Teleporter {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub target: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -129,7 +160,11 @@ pub struct Level {
     #[serde(rename = "platform")]
     pub platforms: Vec<Platform>,
     #[serde(rename = "trap")]
+    #[serde(default)]
     pub traps: Vec<Platform>,
+    #[serde(rename = "teleporter")]
+    #[serde(default)]
+    pub teleporters: Vec<Teleporter>,
 }
 
 impl Default for Level {
@@ -166,6 +201,7 @@ impl Default for Level {
                 width: 4.0,
                 height: 1.0,
             }],
+            teleporters: vec![],
         }
     }
 }

@@ -41,6 +41,8 @@ pub struct Controls {
     pub down_held: bool,
     pub jump_pressed: bool,
     pub jump_held: bool,
+    pub reset_pressed: bool,
+    pub reset_held: bool,
     pub debug_pressed: bool,
     pub debug_held: bool,
 }
@@ -51,6 +53,8 @@ pub struct GameState {
     pub camera: Camera,
     pub world: World,
     pub controls: Controls,
+    pub restart_level: bool,
+    pub change_level: Option<String>,
     pub current_level: String,
     pub levels: HashMap<String, Level>,
 }
@@ -62,39 +66,44 @@ impl GameState {
             .unwrap_or_default();
 
         let current_level = "start".to_string();
-        let mut levels = match std::path::Path::new("levels").read_dir() {
-            Ok(d) => d
-                .flatten()
-                .flat_map(|f| {
-                    if f.metadata().unwrap().is_file() {
-                        Some(f.path())
-                    } else {
-                        None
-                    }
-                })
-                .map(|mut f| {
-                    let level = std::fs::read_to_string(&f)
-                        .map(|data| toml::from_str::<Level>(&data).ok())
-                        .ok()
-                        .flatten();
-                    f.set_extension("");
-                    (
-                        f.file_name()
-                            .expect("File name is not valid utf-8!")
-                            .to_string_lossy()
-                            .to_string(),
-                        level,
-                    )
-                })
-                .filter(|(_, l)| l.is_some())
-                .map(|(f, l)| (f, l.unwrap()))
-                .collect::<HashMap<_, _>>(),
-            _ => hashmap! {"start".to_string() => Level::default()},
-        };
+        let mut levels = std::path::Path::new("levels")
+            .read_dir()
+            .map(|d| {
+                d.flatten()
+                    .flat_map(|f| {
+                        if f.metadata().unwrap().is_file() {
+                            Some(f.path())
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|mut f| {
+                        let level = std::fs::read_to_string(&f)
+                            .map(|data| toml::from_str::<Level>(&data).ok())
+                            .ok()
+                            .flatten();
+                        f.set_extension("");
+                        (
+                            f.file_name()
+                                .expect("File name is not valid utf-8!")
+                                .to_string_lossy()
+                                .to_string(),
+                            level,
+                        )
+                    })
+                    .filter(|(_, l)| l.is_some())
+                    .map(|(f, l)| (f, l.unwrap()))
+                    .collect::<HashMap<_, _>>()
+            })
+            .unwrap_or_else(|_| {
+                hashmap! {"start".to_string() => Level::default()}
+            });
 
         if levels.is_empty() {
             levels.insert("start".to_string(), Level::default());
         }
+
+        // println!("{:#?}", levels);
 
         let mut world = World::new();
 
@@ -130,6 +139,8 @@ impl GameState {
             world,
             current_level: current_level.clone(),
             levels,
+            restart_level: false,
+            change_level: None,
             camera: Camera::default(),
             controls: Controls::default(),
             tick: 0,

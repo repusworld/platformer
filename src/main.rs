@@ -29,6 +29,19 @@ impl ggez::event::EventHandler for GameState {
         while timer::check_update_time(ctx, DESIRED_FPS) {
             self.tick += 1;
 
+            if self.change_level.is_some() {
+                let target = self.change_level.clone().unwrap();
+                self.change_level = None;
+                self.change_level(ctx, target)?;
+                break;
+            }
+
+            if self.restart_level {
+                self.restart_level = false;
+                self.restart_level(ctx)?;
+                break;
+            }
+
             self.do_movement(ctx)?;
             self.apply_physics(ctx)?;
             self.move_camera(ctx)?;

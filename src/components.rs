@@ -62,3 +62,5 @@ pub struct Grounded(pub bool);
 pub struct Death;
 
 pub struct LevelId(pub DefaultAtom);
+
+pub struct TeleportTo(pub String);

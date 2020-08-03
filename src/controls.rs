@@ -12,6 +12,11 @@ impl GameState {
                 .world
                 .query::<(&mut Acceleration, &mut Gravity, &Velocity, &Mass, &Player)>()
         {
+            if self.controls.reset_pressed {
+                self.restart_level = true;
+                break;
+            }
+
             if self.controls.debug_pressed {
                 self.config.debug.draw_bounds = !self.config.debug.draw_bounds;
                 self.config.debug.draw_grid = !self.config.debug.draw_grid;
@@ -86,6 +91,10 @@ impl GameState {
                 self.controls.jump_pressed = !repeat;
                 self.controls.jump_held = true;
             }
+            KeyCode::R => {
+                self.controls.reset_pressed = !repeat;
+                self.controls.reset_held = true;
+            }
             KeyCode::F12 => {
                 self.controls.debug_pressed = !repeat;
                 self.controls.debug_held = true;
@@ -116,6 +125,10 @@ impl GameState {
             KeyCode::Space => {
                 self.controls.jump_pressed = false;
                 self.controls.jump_held = false;
+            }
+            KeyCode::R => {
+                self.controls.reset_pressed = false;
+                self.controls.reset_held = false;
             }
             KeyCode::F12 => {
                 self.controls.debug_pressed = false;

@@ -87,8 +87,7 @@ impl GameState {
     }
 
     #[inline(always)]
-    pub fn collision_detection(&mut self, ctx: &mut Context) -> GameResult<()> {
-        let mut should_restart = false;
+    pub fn collision_detection(&mut self, _ctx: &mut Context) -> GameResult<()> {
         let mut grounded_entities = vec![];
         for (id, (velocity, position, &BoundingBox(bbox))) in
             &mut self
@@ -107,10 +106,14 @@ impl GameState {
             {
                 if let Ok(mut q) = self.world.query_one::<&Death>(other) {
                     if q.get().is_some() {
-                        should_restart = true;
-                        // ggez::event::quit(ctx);
+                        self.restart_level = true;
                     }
                 }
+
+                if let Ok(mut q) = self.world.query_one::<&TeleportTo>(other) {
+                    self.change_level = q.get().map(|tele| tele.0.clone());
+                }
+
                 let bbox_left = bbox.left();
                 let bbox_right = bbox.right();
                 let bbox_top = bbox.top();
@@ -208,8 +211,7 @@ impl GameState {
             if position.0.y >= max_y {
                 position.0.y = max_y;
                 velocity.0.y = 0.0;
-                // ggez::event::quit(ctx);
-                should_restart = true;
+                self.restart_level = true;
             } else if position.0.y <= min_y {
                 position.0.y = min_y;
                 velocity.0.y = 0.0;
@@ -222,10 +224,6 @@ impl GameState {
 
         for id in grounded_entities {
             let _ = self.world.insert_one(id, Grounded(true));
-        }
-
-        if should_restart {
-            self.restart_level(ctx)?;
         }
 
         Ok(())

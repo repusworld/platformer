@@ -3,36 +3,24 @@ width = 10_000
 height = 10_000
 
 [start]
-x = 2
+x = 5
 y = 2
 
 [[platform]]
-x = 0
+x = 5
 y = 2
 width = 4
 height = 1
 
 [[trap]]
-x = 4
+x = 8
 y = 6
-width = 4
-height = 1
-
-[[platform]]
-x = 6
-y = 8
-width = 4
-height = 1
-
-[[platform]]
-x = 12
-y = 14
-width = 4
+width = 10
 height = 1
 
 [[teleporter]]
 x = 30
-y = 10
+y = 2
 width = 4
 height = 1
-target = "level_2"
+target = "start"
