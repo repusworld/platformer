@@ -83,10 +83,10 @@ impl GameState {
                         let level = std::fs::read_to_string(&f)
                             .map(|data| match toml::from_str::<Level>(&data) {
                                 Ok(level) => Some(level),
-                                _ => {
+                                Err(e) => {
                                     println!(
-                                        "failed to parse level file: {:?}",
-                                        f.clone().into_os_string()
+                                        "failed to parse level file ({:?}) with the following error: {}",
+                                        f.clone().into_os_string(), e
                                     );
                                     None
                                 }
