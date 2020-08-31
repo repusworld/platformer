@@ -46,7 +46,7 @@ impl GameState {
                 .world
                 .query::<(&mut Acceleration, &mut Velocity, &Mass, &Grounded)>()
         {
-            if grounded.0 {
+            if grounded.0 > 0 {
                 let mut friction = velocity.0;
                 friction *= -1.0;
                 friction = friction.normalize_safe();
@@ -219,11 +219,15 @@ impl GameState {
         }
 
         for (id, grounded) in &mut self.world.query::<&mut Grounded>() {
-            grounded.0 = grounded_entities.contains(&id);
+            if grounded_entities.contains(&id) {
+                grounded.0 = 50;
+            } else if grounded.0 >= 0 {
+                grounded.0 -= 1;
+            }
         }
 
         for id in grounded_entities {
-            let _ = self.world.insert_one(id, Grounded(true));
+            let _ = self.world.insert_one(id, Grounded(50));
         }
 
         Ok(())

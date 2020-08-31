@@ -57,7 +57,7 @@ pub struct ZOrder(pub i32);
 
 pub struct BoundingBox(pub Rect);
 
-pub struct Grounded(pub bool);
+pub struct Grounded(pub i32);
 
 pub struct Death;
 

@@ -7,10 +7,10 @@ use crate::physics::*;
 impl GameState {
     #[inline(always)]
     pub fn do_movement(&mut self, _ctx: &mut Context) -> GameResult<()> {
-        for (id, (acceleration, gravity, velocity, mass, _)) in
+        for (id, (acceleration, grounded, gravity, velocity, mass, _)) in
             &mut self
                 .world
-                .query::<(&mut Acceleration, &mut Gravity, &Velocity, &Mass, &Player)>()
+                .query::<(&mut Acceleration, &mut Grounded, &mut Gravity, &Velocity, &Mass, &Player)>()
         {
             if self.controls.reset_pressed {
                 self.restart_level = true;
@@ -22,14 +22,9 @@ impl GameState {
                 self.config.debug.draw_grid = !self.config.debug.draw_grid;
             }
 
-            let grounded = self
-                .world
-                .query::<&Grounded>()
-                .iter()
-                .filter(|(other, _)| id == *other)
-                .any(|(_, grounded)| grounded.0);
+            let is_grounded =  grounded.0 > 0;
 
-            if grounded || self.config.player.allow_air_control {
+            if is_grounded || self.config.player.allow_air_control {
                 if self.controls.left_held {
                     acceleration
                         .apply_force(&Vector2::new(-self.config.player.acceleration, 0.0), mass.0);
@@ -41,7 +36,8 @@ impl GameState {
                 }
             }
 
-            if grounded && self.controls.jump_pressed {
+            if is_grounded && self.controls.jump_pressed {
+                grounded.0 = -1;
                 let mag = velocity.0.magnitude();
                 acceleration.apply_force(
                     &Vector2::new(

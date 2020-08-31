@@ -16,6 +16,7 @@ pub const HEIGHT: f32 = 720.0;
 pub const MIDDLE_Y: f32 = HEIGHT / 2.0;
 pub const GRID_THICKNESS: f32 = 1.0;
 pub const DESIRED_FPS: u32 = 60;
+pub const COYOTE_TIME_IN_TICKS: i32 = 5;
 
 #[inline(always)]
 #[allow(unused)]
