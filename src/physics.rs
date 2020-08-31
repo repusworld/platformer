@@ -220,14 +220,14 @@ impl GameState {
 
         for (id, grounded) in &mut self.world.query::<&mut Grounded>() {
             if grounded_entities.contains(&id) {
-                grounded.0 = 50;
+                grounded.0 = COYOTE_TIME_IN_TICKS;
             } else if grounded.0 >= 0 {
                 grounded.0 -= 1;
             }
         }
 
         for id in grounded_entities {
-            let _ = self.world.insert_one(id, Grounded(50));
+            let _ = self.world.insert_one(id, Grounded(COYOTE_TIME_IN_TICKS));
         }
 
         Ok(())
