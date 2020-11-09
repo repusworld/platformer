@@ -4,36 +4,36 @@ height = 100
 
 [start]
 x = 4
-y = 2
+y = 12
 
 [[platform]]
 x = 0
-y = 2
+y = 12
 width = 100
 height = 1
 
 [[text]]
 x = 2.5
-y = 11
+y = 21
 size = 30
 value = "Level 1"
 
 [[teleporter]]
 x = 2
-y = 10
+y = 20
 width = 4
 height = 1
 target = "level_1"
 
 [[text]]
 x = 8.5
-y = 11
+y = 21
 size = 30
 value = "Level 2"
 
 [[teleporter]]
 x = 8
-y = 10
+y = 20
 width = 4
 height = 1
 target = "level_2"

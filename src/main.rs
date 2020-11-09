@@ -98,6 +98,22 @@ impl ggez::event::EventHandler for GameState {
             )?;
         }
 
+        let ac_text = if self.config.player.allow_air_control {
+            String::from("AirControl: on")
+        } else {
+            String::from("AirControl: off")
+        };
+
+        graphics::draw(
+            ctx,
+            &Text::new(
+                graphics::TextFragment::new(ac_text)
+                    .color(Color::from_rgb(0, 0, 0))
+                    .scale(graphics::Scale::uniform(30.0)),
+            ),
+            (Point2::new(5.0, 2.0),),
+        )?;
+
         if self.config.debug.draw_bounds {
             let mut mb = MeshBuilder::new();
             // bounds with pos
