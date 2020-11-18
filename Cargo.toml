@@ -12,11 +12,11 @@ build = "build.rs"
 opt-level = 2
 
 [dependencies]
-ggez = "0.5"
-hecs = "0.2"
-serde = "1.0.114"
-serde_derive = "1.0.114"
-toml = "0.5.6"
+ggez = "0.5.1"
+hecs = "0.3.1"
+serde = "1.0.117"
+serde_derive = "1.0.117"
+toml = "0.5.7"
 itertools = "0.9.0"
 maplit = "1.0.2"
 string_cache = "0.8.0"

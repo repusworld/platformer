@@ -9,7 +9,7 @@ It was chosen to use hecs. See [decision](docs/decisions/ecs_libraries/decision.
 
 Below are things I learned while working on this.
 
-# Calculating the coordinates at which to draw an object, according to a camer and zoom
+# Calculating the coordinates at which to draw an object, according to a camera and zoom
 
 ```cpp
 struct vector2
